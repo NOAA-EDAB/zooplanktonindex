@@ -1,0 +1,42 @@
+---
+title: "Zooplankton VAST index standardization"
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_fold: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(tidyverse)
+library(here)
+library(DT)
+```
+
+# Introduction
+
+The Atlantic herring research track working group is interested in exploring zooplankton indices within the assessment.
+
+These indices could potentially explain:
+1.  herring growth
+1.  herring recruitment
+1.  patterns in herring "survival" random effects
+
+We have zooplankton indices already in `ecodata` at the EPU scale. These were reviewed with the working group in March 2024 (see [here](https://noaa-edab.github.io/forageindex/ZooplanktonOverview.html)). 
+
+However, we want to examine the scale of herring assessment and different combinations of zooplankton species than currently exist in `ecodata`.
+
+We'll try VAST models for index standardization using the ECOMON data as an input.
+
+Set of decisions:
+
+1.  zooplankton species
+1.  which zooplankton metric (area or volume)
+1.  spatial footprint
+1.  temporal scale (seasonal? annual?)
+1.  potential covariates
+
