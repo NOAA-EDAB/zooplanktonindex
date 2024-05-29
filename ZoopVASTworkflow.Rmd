@@ -40,3 +40,73 @@ Set of decisions:
 1.  temporal scale (seasonal? annual?)
 1.  potential covariates
 
+# Explore data
+
+Read in file obtained from Scott Large, source of his zooplankton models:
+
+```{r}
+ecomonall <- read_csv("data/EcoMon_Plankton_Data_v3_8.csv")
+
+names(ecomonall)
+```
+
+A lookup of these column headings is here: https://www.fisheries.noaa.gov/inport/item/35054
+
+What herring eat from our food habits data is summarized here:  https://fwdp.shinyapps.io/tm2020/
+
+Copepods are highest diet proportion, followed by well digested prey (AR), and euphausiids. These are aggregate categories so I should look at the breakdown to species.
+
+```{r}
+# run the diet script that we used for bluefish? gives diet by season and year
+# Load NEFSC stomach data received from Brian Smith
+
+# object is called `allfh`
+load(url("https://github.com/NOAA-EDAB/forageindex/raw/main/fhdat/allfh.Rdata"))
+
+#object is called allfh21
+load(url("https://github.com/NOAA-EDAB/forageindex/raw/main/fhdat/allfh21.RData"))
+
+#object is called allfh22
+load(url("https://github.com/NOAA-EDAB/forageindex/raw/main/fhdat/allfh22.RData"))
+
+# bind all NEFSC stomach datasets
+allfh <- allfh %>%
+  dplyr::bind_rows(allfh21) |>
+  dplyr::bind_rows(allfh22)
+
+# can we deload the 21 and 22 datasets?
+rm("allfh21", "allfh22")
+
+# put the get_diet function on this repo in a folder
+
+
+herring <- get_diet() 
+
+p1 <-   ggplot(herring, aes(year, relmsw, fill=prey)) +
+   geom_bar(stat = "identity") + #
+   ylab("Percent in Diet") +
+   xlab("Year") +
+   facet_wrap("season", nrow=4) +
+   theme_bw() +
+   viridis::scale_fill_viridis(discrete = TRUE) +
+   theme(legend.position = "none"
+         #legend.position="bottom",
+         #legend.text=element_text(size=5)
+         ) +
+    geom_bar_interactive(stat = "identity", aes(tooltip = prey, data_id = prey))
+
+ggiraph(code = print(p1), height=14)  
+
+```
+```
+
+
+Maybe start with total zooplankton volume, Copepoda, Euphausiids, and *Calanus finmarchicus*? And keep both spatial units.
+
+```{r}
+herringfood <- ecomonall |>
+  dplyr::select(cruise_name, station, zoo_gear, ich_gear, lat, lon, date, time, depth, 
+                sfc_temp, sfc_salt, btm_temp, btm_salt, volume_1m2, volume_100m3,
+                )
+```
+
