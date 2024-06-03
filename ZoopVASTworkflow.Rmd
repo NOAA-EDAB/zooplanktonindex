@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE,
 library(tidyverse)
 library(here)
 library(DT)
+library(ggiraph)
 ```
 
 # Introduction
@@ -22,7 +23,7 @@ library(DT)
 The Atlantic herring research track working group is interested in exploring zooplankton indices within the assessment.
 
 These indices could potentially explain:
-1.  herring growth
+1.  herring growth/condition
 1.  herring recruitment
 1.  patterns in herring "survival" random effects
 
@@ -60,29 +61,17 @@ Copepods are highest diet proportion, followed by well digested prey (AR), and e
 # run the diet script that we used for bluefish? gives diet by season and year
 # Load NEFSC stomach data received from Brian Smith
 
-# object is called `allfh`
-load(url("https://github.com/NOAA-EDAB/forageindex/raw/main/fhdat/allfh.Rdata"))
 
-#object is called allfh21
-load(url("https://github.com/NOAA-EDAB/forageindex/raw/main/fhdat/allfh21.RData"))
+# put the get_diet function on this repo in R folder
+source(here::here("R/get_diet.R"))
 
-#object is called allfh22
-load(url("https://github.com/NOAA-EDAB/forageindex/raw/main/fhdat/allfh22.RData"))
+# what is the code
+ecodata::species_groupings |> dplyr::filter(RPATH == "AtlHerring")
 
-# bind all NEFSC stomach datasets
-allfh <- allfh %>%
-  dplyr::bind_rows(allfh21) |>
-  dplyr::bind_rows(allfh22)
+# get diet takes SVSPP as argument
+herringdiet <- get_diet(32) 
 
-# can we deload the 21 and 22 datasets?
-rm("allfh21", "allfh22")
-
-# put the get_diet function on this repo in a folder
-
-
-herring <- get_diet() 
-
-p1 <-   ggplot(herring, aes(year, relmsw, fill=prey)) +
+p1 <-   ggplot(herringdiet, aes(year, relmsw, fill=prey)) +
    geom_bar(stat = "identity") + #
    ylab("Percent in Diet") +
    xlab("Year") +
@@ -98,7 +87,7 @@ p1 <-   ggplot(herring, aes(year, relmsw, fill=prey)) +
 ggiraph(code = print(p1), height=14)  
 
 ```
-```
+
 
 
 Maybe start with total zooplankton volume, Copepoda, Euphausiids, and *Calanus finmarchicus*? And keep both spatial units.
