@@ -92,10 +92,79 @@ ggiraph(code = print(p1), height=14)
 
 Maybe start with total zooplankton volume, Copepoda, Euphausiids, and *Calanus finmarchicus*? And keep both spatial units.
 
+It appears that Copepoda in this dataset is not all copepods together, as I hoped, but is unid copepods. Very few are in the data.
+
+So I will sum everything that Harvey classified as a copeopod in [this spreadsheet that he shared with Scott](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/data/ForageTaxaUse_August2022.xlsx). 
+
 ```{r}
 herringfood <- ecomonall |>
+  dplyr::mutate(allcopepods_10m2 = sum(ctyp_10m2,
+                                       calfin_10m2,
+                                       pseudo_10m2,
+                                       tlong_10m2,
+                                       cham_10m2,
+                                       para_10m2,
+                                       acarspp_10m2,
+                                       mlucens_10m2,
+                                       calminor_10m2,
+                                       clauso_10m2,
+                                       acarlong_10m2,
+                                       euc_10m2,
+                                       fur_10m2,
+                                       calspp_10m2,
+                                       ost_10m2,
+                                       temspp_10m2,
+                                       tort_10m2,
+                                       paraspp_10m2,
+                                       na.rm = TRUE
+                                       ),
+                allcopepods_100m3 = sum(ctyp_100m3,
+                                       calfin_100m3,
+                                       pseudo_100m3,
+                                       tlong_100m3,
+                                       cham_100m3,
+                                       para_100m3,
+                                       acarspp_100m3,
+                                       mlucens_100m3,
+                                       calminor_100m3,
+                                       clauso,
+                                       acarlong_100m3,
+                                       euc_100m3,
+                                       fur_100m3,
+                                       calspp_100m3,
+                                       ost_100m3,
+                                       temspp_100m3,
+                                       tort_100m3,
+                                       paraspp_100m3,
+                                       na.rm = TRUE
+                                       )
+                ) |>
   dplyr::select(cruise_name, station, zoo_gear, ich_gear, lat, lon, date, time, depth, 
                 sfc_temp, sfc_salt, btm_temp, btm_salt, volume_1m2, volume_100m3,
-                )
+                allcopepods_10m2, allcopepods_100m3, euph_10m2, euph_100m3,
+                hyper_10m2, hyper_100m3, calfin_10m2, calfin_100m3) |>
+  dplyr::mutate(date = lubridate::dmy(date),
+                year = lubridate::year(date),
+                month = lubridate::month(date),
+                day = lubridate::day(date))
+
+nonzeroobs <- herringfood |>
+  dplyr::group_by(year, month) |>
+  dplyr::summarise(cope =  sum(allcopepods_10m2 != 0, na.rm = TRUE),
+                   euph = sum(euph_10m2 != 0, na.rm = TRUE), 
+                   hyp = sum(hyper_10m2 != 0, na.rm = TRUE),
+                   calfin = sum(calfin_10m2 != 0, na.rm = TRUE))
 ```
+
+This is a list of stations with nonzero samples by year and month. I need to decide how to break up the data temporally, thinking by season associated with herring population processes. So there could be a winter index, a spring index, a summer index, and a fall index. What months? 
+
+```{r}
+DT::datatable(nonzeroobs)
+```
+
+
+Mark W's herring spawn timing info could be useful here. Do they feed while spawning? 
+
+
+
 
