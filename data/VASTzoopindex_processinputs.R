@@ -81,6 +81,8 @@ herringfood <- ecomonall |>
                                        month %in% c(6,7,8) ~ "summer",
                                        month %in% c(9,10,11) ~ "fall",
                                        TRUE ~ as.character(NA)))
+
+saveRDS(herringfood, here("data/herringfood_stn_all.rds"))
   
 # merge with OISST to fill gaps
 
