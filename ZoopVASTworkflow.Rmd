@@ -36,12 +36,14 @@ We'll try VAST models for index standardization using the ECOMON data as an inpu
 Set of decisions:
 
 1.  zooplankton species
-1.  which zooplankton metric (area or volume)
-1.  spatial footprint
-1.  temporal scale (seasonal? annual?)
-1.  potential covariates
+2.  which zooplankton metric (area or volume)
+3.  spatial footprint
+4.  temporal scale (seasonal? annual?)
+5.  potential covariates
 
 # Explore data
+
+## Zooplankton data
 
 Read in file obtained from Scott Large, source of his zooplankton models:
 
@@ -52,6 +54,8 @@ names(ecomonall)
 ```
 
 A lookup of these column headings is here: https://www.fisheries.noaa.gov/inport/item/35054
+
+## Herring diets
 
 What herring eat from our food habits data is summarized here:  https://fwdp.shinyapps.io/tm2020/
 
@@ -88,11 +92,13 @@ ggiraph(code = print(p1), height=14)
 
 ```
 
+# Initial decisions
 
+## 1. Zooplankton species: VAST Categories
 
-Maybe start with total zooplankton volume, Copepoda, Euphausiids, and *Calanus finmarchicus*? And keep both spatial units.
+Maybe start with total zooplankton volume, Copepoda, Euphausiids, and *Calanus finmarchicus*? And keep both spatial units. These would be separate univariate models, though we could try a multivariate model with all too.
 
-It appears that Copepoda in this dataset is not all copepods together, as I hoped, but is unid copepods. Very few are in the data.
+It appears that Copepoda in the ecomon dataset is not all copepods together, as I hoped, but is unid copepods. Very few are in the data.
 
 So I will sum everything that Harvey classified as a copeopod in [this spreadsheet that he shared with Scott](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/data/ForageTaxaUse_August2022.xlsx). 
 
@@ -150,21 +156,83 @@ herringfood <- ecomonall |>
 
 nonzeroobs <- herringfood |>
   dplyr::group_by(year, month) |>
-  dplyr::summarise(cope =  sum(allcopepods_10m2 != 0, na.rm = TRUE),
-                   euph = sum(euph_10m2 != 0, na.rm = TRUE), 
-                   hyp = sum(hyper_10m2 != 0, na.rm = TRUE),
-                   calfin = sum(calfin_10m2 != 0, na.rm = TRUE))
+  dplyr::summarise(cope =  sum(allcopepods_100m3 != 0, na.rm = TRUE),
+                   euph = sum(euph_100m3 != 0, na.rm = TRUE), 
+                   hyp = sum(hyper_100m3 != 0, na.rm = TRUE),
+                   calfin = sum(calfin_100m3 != 0, na.rm = TRUE))
 ```
 
-This is a list of stations with nonzero samples by year and month. I need to decide how to break up the data temporally, thinking by season associated with herring population processes. So there could be a winter index, a spring index, a summer index, and a fall index. What months? 
+So we will look at total zooplankton displacement volume: `volume_1m2, volume_100m3`
+
+Total euphausiids:  `euph_10m2, euph_100m3`
+
+Total hyperiids: `hyper_10m2, hyper_100m3`
+
+*Calanus finmarchicus*: `calfin_10m2, calfin_100m3`
+
+Total copeopds: summing over the following names for each of the area or volume metrics, only area shown here
+
+`ctyp_10m2, calfin_10m2, pseudo_10m2, tlong_10m2, cham_10m2,  para_10m2,  acarspp_10m2,  mlucens_10m2, calminor_10m2, clauso_10m2, acarlong_10m2, euc_10m2, fur_10m2, calspp_10m2, ost_10m2, temspp_10m2, tort_10m2, paraspp_10m2`
+
+These are the corresponding species names, with Large copepods denoted by * 
+
+Centropages typicus, Calanus finmarchicus\*, Pseudocalanus spp., Temora longicornis, Centropages hamatus, Paracalanus parvus, Acartia spp., Metridia lucens\*, Calanus minor\*, Clausocalanus arcuicornis, Acartia longiremis, Eucalanus spp.\*, Clausocalanus furcatus,  Calanus spp.\*, Temora stylifera, Temora spp., Tortanus discaudatus, Paracalanus spp.
+
+
+Dataset years extend from `r sort(unique(herringfood$year))[1]` to `r sort(unique(herringfood$year))[length(unique(herringfood$year))]`
+
+This is a list of stations with nonzero samples by year and month to better understand seasonal coverage. 
 
 ```{r}
 DT::datatable(nonzeroobs)
 ```
 
+## 2. Which metric? 
 
-Mark W's herring spawn timing info could be useful here. Do they feed while spawning? 
+Ryan recommends the numbers per 100 cubic meters of filtered water volume `_100m3` data, which should match what is used in the SOE indices. However, he thinks that anomalies calculated from the area `_10m2` data should be the same as those calculated from the volume based numbers. This makes sense to me.
+
+Let's start with the `_100m3` numbers for each category. We can try one with the other metric and see if it does make a difference as well.
 
 
+## 3. Spatial scale options:
+
+1.  Herring survey strata (differ by spring and fall)
+2.  EPUs for comparison with SOE datasets
+3.  Full shelf/AllEPU 
 
 
+## 4. Temporal scale options: 
+
+I need to decide how to break up the data temporally, thinking by season associated with herring population processes. So there could be a winter index, a spring index, a summer index, and a fall index. What months?
+
+Mark W's herring spawn timing info could be useful here. Do they feed while spawning?
+
+Alternatively, at least two seasons should match the bottom trawl survey timing if we want to use these indices as covariates for availability/catchability. 
+
+Mark W's info also looked at changes in survey timing.
+
+1.  4 models, 2 matching survey seasons (spring/fall) and try two for winter and summer to cover other portions of herring life history. 
+1.  Alternatively, roll winter into spring and summer into fall as done for bluefish.
+1.  Not sure an annual model makes sense for zooplankton but we could try it, may compare with SOE indices?
+
+## 5. Covariates
+
+Probably at a minimum temperature should be explored. Catchability or habitat? Its both
+
+Day of year or day of season? potential catchability covariate for this high turnover group
+
+A frontal index might be useful? As a habitat covaraite?
+
+### Temperature
+
+We will need to merge in alternative temperature to use all the data since some are NAs. 
+
+We have `r dim(herringfood)[1]` rows (stations) total, `r `dim(herringfood |> dplyr::filter(!is.na(sfc_temp)))[1]` that have surface temperature, and `r `dim(herringfood |> dplyr::filter(!is.na(btm_temp)))[1]` that have bottom temperature.
+
+This can be done with the OISST data as was done for the forage index, or the bottom temperature data as was done for the benthos index.
+
+Likely surface temperature is more relevant for zooplankton?
+
+### Day of year
+
+We can derive from date field in dataset, convert to season for seasonal models
