@@ -23,9 +23,10 @@ library(ggiraph)
 The Atlantic herring research track working group is interested in exploring zooplankton indices within the assessment.
 
 These indices could potentially explain:
-1.  herring growth/condition
-1.  herring recruitment
-1.  patterns in herring "survival" random effects
+
+1.  herring growth/condition  
+1.  herring recruitment  
+1.  patterns in herring "survival" random effects  
 
 We have zooplankton indices already in `ecodata` at the EPU scale. These were reviewed with the working group in March 2024 (see [here](https://noaa-edab.github.io/forageindex/ZooplanktonOverview.html)). 
 
@@ -103,7 +104,8 @@ It appears that Copepoda in the ecomon dataset is not all copepods together, as 
 So I will sum everything that Harvey classified as a copeopod in [this spreadsheet that he shared with Scott](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/data/ForageTaxaUse_August2022.xlsx). 
 
 ```{r}
-herringfood <- ecomonall |>
+sumcopepods <- ecomonall |>
+  dplyr::rowwise() |>
   dplyr::mutate(allcopepods_10m2 = sum(ctyp_10m2,
                                        calfin_10m2,
                                        pseudo_10m2,
@@ -123,40 +125,57 @@ herringfood <- ecomonall |>
                                        tort_10m2,
                                        paraspp_10m2,
                                        na.rm = TRUE
-                                       ),
-                allcopepods_100m3 = sum(ctyp_100m3,
-                                       calfin_100m3,
-                                       pseudo_100m3,
-                                       tlong_100m3,
-                                       cham_100m3,
-                                       para_100m3,
-                                       acarspp_100m3,
-                                       mlucens_100m3,
-                                       calminor_100m3,
-                                       clauso,
-                                       acarlong_100m3,
-                                       euc_100m3,
-                                       fur_100m3,
-                                       calspp_100m3,
-                                       ost_100m3,
-                                       temspp_100m3,
-                                       tort_100m3,
-                                       paraspp_100m3,
-                                       na.rm = TRUE
-                                       )
-                ) |>
-  dplyr::select(cruise_name, station, zoo_gear, ich_gear, lat, lon, date, time, depth, 
+  ),
+  allcopepods_100m3 = sum(ctyp_100m3,
+                          calfin_100m3,
+                          pseudo_100m3,
+                          tlong_100m3,
+                          cham_100m3,
+                          para_100m3,
+                          acarspp_100m3,
+                          mlucens_100m3,
+                          calminor_100m3,
+                          clauso,
+                          acarlong_100m3,
+                          euc_100m3,
+                          fur_100m3,
+                          calspp_100m3,
+                          ost_100m3,
+                          temspp_100m3,
+                          tort_100m3,
+                          paraspp_100m3,
+                          na.rm = TRUE
+  ) 
+  ) |>
+  dplyr::select(cruise_name, station, lat, lon, date, time, depth, 
                 sfc_temp, sfc_salt, btm_temp, btm_salt, volume_1m2, volume_100m3,
-                allcopepods_10m2, allcopepods_100m3, euph_10m2, euph_100m3,
-                hyper_10m2, hyper_100m3, calfin_10m2, calfin_100m3) |>
-  dplyr::mutate(date = lubridate::dmy(date),
-                year = lubridate::year(date),
-                month = lubridate::month(date),
-                day = lubridate::day(date))
+                allcopepods_10m2, allcopepods_100m3)
+  
+
+herringfood <- ecomonall |>
+    dplyr::left_join(sumcopepods) |>
+    dplyr::select(cruise_name, station, lat, lon, date, time, depth, 
+                  sfc_temp, sfc_salt, btm_temp, btm_salt, volume_1m2, volume_100m3,
+                  allcopepods_10m2, allcopepods_100m3, euph_10m2, euph_100m3,
+                  hyper_10m2, hyper_100m3, calfin_10m2, calfin_100m3) |>
+    dplyr::mutate(date = lubridate::dmy(date),
+                  year = lubridate::year(date),
+                  month = lubridate::month(date),
+                  day = lubridate::day(date),
+                  stationid = paste0(cruise_name, "_", station),
+                  season_ng = case_when(month <= 6 ~ "SPRING",
+                                        month >= 7 ~ "FALL",
+                                        TRUE ~ as.character(NA)),
+                  season_4 = case_when(month %in% c(12,1,2) ~ "winter",
+                                       month %in% c(3,4,5) ~ "spring",
+                                       month %in% c(6,7,8) ~ "summer",
+                                       month %in% c(9,10,11) ~ "fall",
+                                       TRUE ~ as.character(NA)))
 
 nonzeroobs <- herringfood |>
   dplyr::group_by(year, month) |>
-  dplyr::summarise(cope =  sum(allcopepods_100m3 != 0, na.rm = TRUE),
+  dplyr::summarise(totzoo = sum(volume_100m3 != 0, na.rm = TRUE),
+                   cope =  sum(allcopepods_100m3 != 0, na.rm = TRUE),
                    euph = sum(euph_100m3 != 0, na.rm = TRUE), 
                    hyp = sum(hyper_100m3 != 0, na.rm = TRUE),
                    calfin = sum(calfin_100m3 != 0, na.rm = TRUE))
@@ -191,6 +210,8 @@ DT::datatable(nonzeroobs)
 
 Ryan recommends the numbers per 100 cubic meters of filtered water volume `_100m3` data, which should match what is used in the SOE indices. However, he thinks that anomalies calculated from the area `_10m2` data should be the same as those calculated from the volume based numbers. This makes sense to me.
 
+Harvey is using the numbers per 100 cubic meters for other analyses as well.
+
 Let's start with the `_100m3` numbers for each category. We can try one with the other metric and see if it does make a difference as well.
 
 
@@ -205,14 +226,20 @@ Let's start with the `_100m3` numbers for each category. We can try one with the
 
 I need to decide how to break up the data temporally, thinking by season associated with herring population processes. So there could be a winter index, a spring index, a summer index, and a fall index. What months?
 
-Mark W's herring spawn timing info could be useful here. Do they feed while spawning?
+Mark W's [herring spawn timing](https://drive.google.com/drive/folders/1vMnK6j01gM0ujv6sy5AClkXNn3w0UsAX) info could be useful here. Do they feed while spawning?
 
 Alternatively, at least two seasons should match the bottom trawl survey timing if we want to use these indices as covariates for availability/catchability. 
 
-Mark W's info also looked at changes in survey timing.
+Mark W's spawn timing paper also looked at changes in survey timing.
 
-1.  4 models, 2 matching survey seasons (spring/fall) and try two for winter and summer to cover other portions of herring life history. 
+1.  4 models, 2 matching survey seasons (spring/fall) and try two for winter and summer to cover other portions of herring life history. Current designations are
+    *  "winter" months 12, 1, 2
+    *  "spring" months 3, 4, 5
+    *  "summer" months 6, 7, 8
+    *  "fall" months 9, 10, 11
 1.  Alternatively, roll winter into spring and summer into fall as done for bluefish.
+    *  "SPRING" months 1-6
+    *  "FALL" months 7-12
 1.  Not sure an annual model makes sense for zooplankton but we could try it, may compare with SOE indices?
 
 ## 5. Covariates
@@ -227,11 +254,75 @@ A frontal index might be useful? As a habitat covaraite?
 
 We will need to merge in alternative temperature to use all the data since some are NAs. 
 
-We have `r dim(herringfood)[1]` rows (stations) total, `r `dim(herringfood |> dplyr::filter(!is.na(sfc_temp)))[1]` that have surface temperature, and `r `dim(herringfood |> dplyr::filter(!is.na(btm_temp)))[1]` that have bottom temperature.
-
-This can be done with the OISST data as was done for the forage index, or the bottom temperature data as was done for the benthos index.
+We have `r dim(herringfood)[1]` rows (stations) total, `r dim(herringfood |> dplyr::filter(!is.na(sfc_temp)))[1]` that have surface temperature, and `r dim(herringfood |> dplyr::filter(!is.na(btm_temp)))[1]` that have bottom temperature.
 
 Likely surface temperature is more relevant for zooplankton?
+
+Missing temperature data by year and season (SPRING and FALL):
+```{r}
+stnsummary <- herringfood %>%
+  #dplyr::filter(year>1984) %>%
+  dplyr::group_by(year, season_ng) %>%
+  dplyr::summarise(nstation = n(),
+                   hastemp = sum(!is.na(sfc_temp))) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(percentmiss = (nstation - hastemp)/nstation*100) %>%
+  tidyr::pivot_wider(names_from = season_ng,
+    values_from = c(nstation, hastemp, percentmiss)) %>%
+  dplyr::select(year, nstation_SPRING, hastemp_SPRING, percentmiss_SPRING,
+                nstation_FALL, hastemp_FALL, percentmiss_FALL)
+
+flextable::flextable(stnsummary) %>%
+  flextable::set_header_labels(year = 'Year', 
+                               nstation_SPRING = "Spring N stations", 
+                               hastemp_SPRING = "Spring N stations with in situ temperature",
+                               percentmiss_SPRING = "Spring percent missing temperature",
+                               nstation_FALL = "Fall N stations", 
+                               hastemp_FALL = "Fall N stations with in situ temperature",
+                               percentmiss_FALL = "Fall percent missing temperature") %>%
+  flextable::set_caption("Number of survey stations by year and season with in situ sea surface temperature measurements.") %>%
+  flextable::colformat_double(big.mark = "", digits = 0) %>%
+  #flextable::autofit()
+  flextable::width(width = 1)
+```
+
+Missing temperature data by year and season (winter, spring, summer, fall):
+```{r}
+stnsummary <- herringfood %>%
+  #dplyr::filter(year>1984) %>%
+  dplyr::group_by(year, season_4) %>%
+  dplyr::summarise(nstation = n(),
+                   hastemp = sum(!is.na(sfc_temp))) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(percentmiss = (nstation - hastemp)/nstation*100) %>%
+  tidyr::pivot_wider(names_from = season_4,
+    values_from = c(nstation, hastemp, percentmiss)) %>%
+  dplyr::select(year, nstation_winter, hastemp_winter, percentmiss_winter,
+                nstation_spring, hastemp_spring, percentmiss_spring,
+                nstation_summer, hastemp_summer, percentmiss_summer,
+                nstation_fall, hastemp_fall, percentmiss_fall)
+
+flextable::flextable(stnsummary) %>%
+  flextable::set_header_labels(year = 'Year',
+                               nstation_winter = "Winter N stations", 
+                               hastemp_winter = "Winter N stations with in situ temperature", 
+                               percentmiss_winter = "Winter percent missing temperature",
+                               nstation_spring = "Spring N stations",
+                               hastemp_spring = "Spring N stations with in situ temperature",
+                               percentmiss_spring = "Spring percent missing temperature",
+                               nstation_summer = "Summer N stations", 
+                               hastemp_summer = "Summer N stations with in situ temperature", 
+                               percentmiss_summer = "Summer percent missing temperature",
+                               nstation_fall = "Fall N stations",
+                               hastemp_fall = "Fall N stations with in situ temperature",
+                               percentmiss_fall = "Fall percent missing temperature") %>%
+  flextable::set_caption("Number of survey stations by year and season with in situ sea surface temperature measurements.") %>%
+  flextable::colformat_double(big.mark = "", digits = 0) %>%
+  #flextable::autofit()
+  flextable::width(width = 1)
+```
+
+This can be done with the OISST data as was done for the forage index, or the bottom temperature data as was done for the benthos index.
 
 ### Day of year
 
