@@ -16,6 +16,7 @@ library(tidyverse)
 library(here)
 library(DT)
 library(ggiraph)
+library(patchwork)
 ```
 
 # Introduction
@@ -220,6 +221,97 @@ Let's start with the `_100m3` numbers for each category. We can try one with the
 1.  Herring survey strata (differ by spring and fall)
 2.  EPUs for comparison with SOE datasets
 3.  Full shelf/AllEPU 
+
+Lets look at the spatial extent of the data in each season to see if we need to limit model domain. A test model of total zoop biovolume (present at each station in many years) failed using the full set of EPUs because the spatial random effects parameter was headed for 0. This is what happened to the herring index fall model when there were no observations in the southern end of the domain.
+
+This is zooplankton volume by season (half years)
+
+```{r}
+herringfood_stn <- readRDS(here::here("data/herringfood_stn_all.rds"))
+
+# make SST column that uses surftemp unless missing or 0
+
+#herringfood_stn <- herringfood_stn %>%
+#  dplyr::mutate(sstfill = ifelse((is.na(sfc_temp)|sfc_temp==0), oisst, sfc_temp))
+
+# code Vessel as AL=0, HB=1, NEAMAP=2
+
+herringfood_stn_fall <- herringfood_stn %>%
+  #ungroup() %>%
+  filter(season_ng == "FALL", # Annual model for MRIP index
+         year > 1976) %>%
+  mutate(AreaSwept_km2 = 1, #Elizabeth's code
+         #declon = -declon already done before neamap merge
+         Vessel = 1 #as.numeric(as.factor(vessel))-1
+  ) %>% 
+  dplyr::select(Catch_g = volume_100m3, #use megabenwt for individuals input in example
+                Year = year,
+                Vessel,
+                AreaSwept_km2,
+                Lat = lat,
+                Lon = lon #,
+                #btm_temp, #this leaves out many stations
+                #sfc_temp, #this leaves out many stations
+                #oisst,
+                #sstfill
+  ) %>%
+  na.omit() %>%
+  as.data.frame()
+
+herringfood_stn_spring <- herringfood_stn %>%
+  #ungroup() %>%
+  filter(season_ng == "SPRING", # Annual model for MRIP index
+         year > 1976) %>%
+  mutate(AreaSwept_km2 = 1, #Elizabeth's code
+         #declon = -declon already done before neamap merge
+         Vessel = 1 #as.numeric(as.factor(vessel))-1
+  ) %>% 
+  dplyr::select(Catch_g = volume_100m3, #use megabenwt for individuals input in example
+                Year = year,
+                Vessel,
+                AreaSwept_km2,
+                Lat = lat,
+                Lon = lon #,
+                #btm_temp, #this leaves out many stations
+                #sfc_temp, #this leaves out many stations
+                #oisst,
+                #sstfill
+  ) %>%
+  na.omit() %>%
+  as.data.frame()
+
+
+nonzerofall <- herringfood_stn_fall |>
+  dplyr::filter(Catch_g > 0) #,
+                #Year > 1981)
+
+nonzerospring <- herringfood_stn_spring |>
+  dplyr::filter(Catch_g > 0) #,
+               # Year > 1981)
+
+Fall <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = nonzerofall, aes(x = Lon, y = Lat), colour = "blue", size=0.5, alpha=1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Fall zoo biovolume 1982-2022")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+
+Spring <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = nonzerospring, aes(x = Lon, y = Lat), colour = "blue", size=0.5, alpha=1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Spring zoo biovolume 1982-2022")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+ 
+Spring + Fall
+```
+
 
 
 ## 4. Temporal scale options: 
