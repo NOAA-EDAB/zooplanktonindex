@@ -27,7 +27,7 @@ herringfood_stn_fall <- herringfood_stn %>%
          #declon = -declon already done before neamap merge
          Vessel = 1 #as.numeric(as.factor(vessel))-1
   ) %>% 
-  dplyr::select(Catch_g = volume_100m3, #use megabenwt for individuals input in example
+  dplyr::select(Catch_g = hyper_100m3, #use megabenwt for individuals input in example
                 Year = year,
                 Vessel,
                 AreaSwept_km2,
@@ -49,7 +49,7 @@ herringfood_stn_spring <- herringfood_stn %>%
          #declon = -declon already done before neamap merge
          Vessel = 1 #as.numeric(as.factor(vessel))-1
   ) %>% 
-  dplyr::select(Catch_g = volume_100m3, #use megabenwt for individuals input in example
+  dplyr::select(Catch_g = hyper_100m3, #use megabenwt for individuals input in example
                 Year = year,
                 Vessel,
                 AreaSwept_km2,
@@ -149,11 +149,6 @@ allEPU2 <- FishStatsUtils::northwest_atlantic_grid %>%
 FieldConfig <- matrix( "IID", ncol=2, nrow=3, 
                        dimnames=list(c("Omega","Epsilon","Beta"),c("Component_1","Component_2")))
 
-# fall model is breaking on this, try setting to 0
-FieldConfig["Omega", "Component_2"]<-0
-
-# spring model is breaking on this too, try setting to 0
-FieldConfig["Epsilon", "Component_1"]<-0
 
 RhoConfig <- c(
   "Beta1" = 0,      # temporal structure on years (intercepts) 
@@ -185,8 +180,7 @@ settings = make_settings( n_x = 500,
                           #Version = "VAST_v14_0_1", #needed to prevent error from newer dev version number
                           #strata.limits = list('All_areas' = 1:1e5), full area
                           strata.limits = strata.limits,
-                          purpose = "index2", # default ObsModel is c(2,1) https://github.com/James-Thorson-NOAA/FishStatsUtils/blob/main/R/make_settings.R
-                          ObsModel = c(2,4), # should be Poisson-link fixing encounter probability=1 for any year where all samples encounter the species
+                          purpose = "index2", 
                           bias.correct = FALSE,
                           use_anisotropy = TRUE,
                           #fine_scale = TRUE,
@@ -203,7 +197,7 @@ settings = make_settings( n_x = 500,
 
 season <- c("fall_500_test")
 
-working_dir <- here::here(sprintf("pyindex/zoopvolume_%s/", season))
+working_dir <- here::here(sprintf("pyindex/hyper_%s/", season))
 
 if(!dir.exists(working_dir)) {
   dir.create(working_dir)
@@ -235,7 +229,7 @@ plot( fit,
 
 season <- c("spring_500_test")
 
-working_dir <- here::here(sprintf("pyindex/zoopvolume_%s/", season))
+working_dir <- here::here(sprintf("pyindex/hyper_%s/", season))
 
 if(!dir.exists(working_dir)) {
   dir.create(working_dir)

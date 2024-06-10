@@ -8,11 +8,11 @@ library(VAST)
 
 #Read in data, separate spring and fall, and rename columns for VAST:
 
-# this dataset created in SSTmethods.Rmd
+# this dataset created in VASTzoopindex_processinputs.R
 
-megabenagg_stn <- readRDS(here::here("fhdata/megabenagg_stn_all_modBT.rds"))
+herringfood_stn <- readRDS(here::here("data/herringfood_stn_all.rds"))
 
-macrobenagg_stn <- readRDS(here::here("fhdata/macrobenagg_stn_all_modBT.rds"))
+# make SST column that uses surftemp unless missing or 0
 
 # make SST column that uses surftemp unless missing or 0
 # there are 3 surftemp 0 values in the dataset, all with oisst > 15
