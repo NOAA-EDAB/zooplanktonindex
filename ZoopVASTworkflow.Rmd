@@ -63,10 +63,9 @@ What herring eat from our food habits data is summarized here:  https://fwdp.shi
 
 Copepods are highest diet proportion, followed by well digested prey (AR), and euphausiids. These are aggregate categories so I should look at the breakdown to species.
 
-```{r}
+```{r, eval=FALSE}
 # run the diet script that we used for bluefish? gives diet by season and year
 # Load NEFSC stomach data received from Brian Smith
-
 
 # put the get_diet function on this repo in R folder
 source(here::here("R/get_diet.R"))
@@ -76,6 +75,14 @@ ecodata::species_groupings |> dplyr::filter(RPATH == "AtlHerring")
 
 # get diet takes SVSPP as argument
 herringdiet <- get_diet(32) 
+
+saveRDS(herringdiet, here::here("data/herringdiet.rds"))
+
+```
+
+```{r}
+
+herringdiet <- readRDS(here::here("data/herringdiet.rds"))
 
 p1 <-   ggplot(herringdiet, aes(year, relmsw, fill=prey)) +
    geom_bar(stat = "identity") + #
@@ -323,6 +330,23 @@ Mark W's [herring spawn timing](https://drive.google.com/drive/folders/1vMnK6j01
 Alternatively, at least two seasons should match the bottom trawl survey timing if we want to use these indices as covariates for availability/catchability. 
 
 Mark W's spawn timing paper also looked at changes in survey timing.
+
+What is NEFSC BTS survey timing? Histograms of survey month grouped by FALL, SPRING:
+
+```{r}
+survdat <- readRDS(url("https://github.com/NOAA-EDAB/benthosindex/raw/main/data/survdat_nobio.rds"))
+
+survdat$survdat |>
+  dplyr::mutate(date = lubridate::ymd_hms(EST_TOWDATE),
+                month = lubridate::month(date)) |>
+  dplyr::group_by(SEASON) |>
+  dplyr::group_walk(~ hist(.x$month, 
+                           breaks = c(1:12),
+                           right = TRUE))
+
+
+```
+
 
 1.  4 models, 2 matching survey seasons (spring/fall) and try two for winter and summer to cover other portions of herring life history. Current designations are
     *  "winter" months 12, 1, 2
