@@ -202,6 +202,103 @@ flextable::flextable(modselect) %>%
 
 # Preliminary indices by model
 
+## Spatial strata for reference
+
+Model results are presented in seven spatial strata:
+
+*  AllEPU is the area covered by green, orange, red, and purple in the EPUs plot on the left
+*  her_sp is the Atlantic herring spring NEFSC bottom trawl survey strata (yellow in center plot)
+*  her_fa is the Atlantic herring fall NEFSC bottom trawl survey strata (yellow in right plot)
+*  MAB is the Mid Atlantic Bight, green in the left plot
+*  GB is Georges Bank, orange in the left plot
+*  GOM is the Gulf of Maine, red in the left plot
+*  SS is the Scotian Shelf, purple in the left plot
+
+The brown grid is the full Northwest Atlantic grid built into VAST, we are not using the area south of Cape Hatteras.
+
+
+```{r}
+
+theme_set(theme_bw())
+
+herring_spring <- c(01010, 01020, 01030, 01040, 01050, 01060, 01070, 01080, 01090, 
+                    01100, 01110, 01120, 01130, 01140, 01150, 01160, 01170, 01180, 
+                    01190, 01200, 01210, 01220, 01230, 01240, 01250, 01260, 01270, 
+                    01280, 01290, 01300, 01360, 01370, 01380, 01390, 01400, 01610, 
+                    01620, 01630, 01640, 01650, 01660, 01670, 01680, 01690, 01700, 
+                    01710, 01720, 01730, 01740, 01750, 01760)
+herring_fall <- c(01050, 01060, 01070, 01080, 01090, 01100, 01110, 01120, 01130, 
+                  01140, 01150, 01160, 01170, 01180, 01190, 01200, 01210, 01220, 
+                  01230, 01240, 01250, 01260, 01270, 01280, 01290, 01300, 01360, 
+                  01370, 01380, 01390, 01400)
+
+herring_springgrid <-  FishStatsUtils::northwest_atlantic_grid %>%
+  filter(stratum_number %in% herring_spring)
+
+herring_fallgrid <-  FishStatsUtils::northwest_atlantic_grid %>%
+  filter(stratum_number %in% herring_fall)
+
+MAB <- c(1010:1080, 1100:1120, 1600:1750, 3010:3450, 3470, 3500, 3510)
+GB  <- c(1090, 1130:1210, 1230, 1250, 3460, 3480, 3490, 3520:3550)
+GOM <- c(1220, 1240, 1260:1290, 1360:1400, 3560:3830)
+SS  <- c(1300:1352, 3840:3990)
+
+# Mid Atlantic Bight EPU
+MABgrid <- FishStatsUtils::northwest_atlantic_grid %>% 
+  dplyr::filter(stratum_number %in% MAB) 
+
+# Georges Bank EPU
+GBgrid <- FishStatsUtils::northwest_atlantic_grid %>% 
+  dplyr::filter(stratum_number %in% GB) 
+
+# gulf of maine EPU (for SOE)
+GOMgrid <- FishStatsUtils::northwest_atlantic_grid %>% 
+  dplyr::filter(stratum_number %in% GOM) 
+
+# scotian shelf EPU (for SOE)
+SSgrid <- FishStatsUtils::northwest_atlantic_grid %>%  
+  dplyr::filter(stratum_number %in% SS) 
+
+
+EPUs <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = MABgrid, aes(x = Lon, y = Lat), colour = "green", size=0.05, alpha=0.1) +
+  geom_point(data = GBgrid, aes(x = Lon, y = Lat), colour = "orange", size=0.05, alpha=0.1) +
+  geom_point(data = GOMgrid, aes(x = Lon, y = Lat), colour = "red", size=0.05, alpha=0.1) +
+  geom_point(data = SSgrid, aes(x = Lon, y = Lat), colour = "purple", size=0.05, alpha=0.1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("EPUs eco prod units")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+  
+Fall <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = herring_fallgrid, aes(x = Lon, y = Lat),  colour = "yellow", size=0.05, alpha=0.1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Fall herring BTS")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+
+Spring <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = herring_springgrid, aes(x = Lon, y = Lat),  colour = "yellow", size=0.05, alpha=0.1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Spring herring BTS")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+ 
+EPUs + Spring + Fall
+```
+
+
+## Indices by group, season, and region
+
 ```{r}
 stratlook <- data.frame(Stratum = c("Stratum_1",
                                     "Stratum_2",
@@ -253,90 +350,121 @@ zootsmean <- splitoutput %>%
 
 ```{r, fig.height=10}
 
-filterEPUs <- c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU")
+plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
+  
+  filterEPUs <- plotregions #c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU")
+  
+  currentMonth <- lubridate::month(Sys.Date())
+  currentYear <- lubridate::year(Sys.Date())
+  if (currentMonth > 4) {
+    endShade <- currentYear
+  } else {
+    endShade <- currentYear - 1
+  }
+  shadedRegion <- c(endShade-9,endShade)
+  
+  shade.alpha <- 0.3
+  shade.fill <- "lightgrey"
+  lwd <- 1
+  pcex <- 2
+  trend.alpha <- 0.5
+  trend.size <- 2
+  hline.size <- 1
+  line.size <- 2
+  hline.alpha <- 0.35
+  hline.lty <- "dashed"
+  label.size <- 5
+  hjust.label <- 1.5
+  letter_size <- 4
+  errorbar.width <- 0.25
+  x.shade.min <- shadedRegion[1]
+  x.shade.max <- shadedRegion[2]
+  
+  setup <- list(
+    shade.alpha = shade.alpha,
+    shade.fill =shade.fill,
+    lwd = lwd,
+    pcex = pcex,
+    trend.alpha = trend.alpha,
+    trend.size = trend.size,
+    line.size = line.size,
+    hline.size = hline.size,
+    hline.alpha = hline.alpha,
+    hline.lty = hline.lty,
+    errorbar.width = errorbar.width,
+    label.size = label.size,
+    hjust.label = hjust.label,
+    letter_size = letter_size,
+    x.shade.min = x.shade.min,
+    x.shade.max = x.shade.max
+  )
+  
+  
+  fix<- splitoutput |>
+    dplyr::filter(Data %in% plotdata, #c("calfin"),
+                  Region %in% filterEPUs) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::summarise(max = max(Estimate))
+  
+  p <- splitoutput |>
+    dplyr::filter(Data %in% plotdata, #c("calfin"),
+                  Region %in% filterEPUs) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::left_join(fix) |>
+    dplyr::mutate(#Value = Value/resca,
+      Mean = as.numeric(Estimate),
+      SE = Std..Error.for.Estimate,
+      Mean = Mean/max,
+      SE = SE/max,
+      Upper = Mean + SE,
+      Lower = Mean - SE) |>
+    ggplot2::ggplot(ggplot2::aes(x = Time, y = Mean, group = Season))+
+    ggplot2::annotate("rect", fill = setup$shade.fill, alpha = setup$shade.alpha,
+                      xmin = setup$x.shade.min , xmax = setup$x.shade.max,
+                      ymin = -Inf, ymax = Inf) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = Lower, ymax = Upper, fill = Season), alpha = 0.5)+
+    ggplot2::geom_point()+
+    ggplot2::geom_line()+
+    ggplot2::ggtitle(plottitle)+
+    ggplot2::ylab(expression("Relative abundance"))+
+    ggplot2::xlab(ggplot2::element_blank())+
+    ggplot2::facet_wrap(Region~Season, ncol = 2)+
+    ecodata::geom_gls()+
+    ecodata::theme_ts()+
+    ecodata::theme_facet()+
+    ecodata::theme_title()
+  
+  return(p)
+}
 
-currentMonth <- lubridate::month(Sys.Date())
-    currentYear <- lubridate::year(Sys.Date())
-    if (currentMonth > 4) {
-      endShade <- currentYear
-    } else {
-      endShade <- currentYear - 1
-    }
-    shadedRegion <- c(endShade-9,endShade)
 
-    shade.alpha <- 0.3
-    shade.fill <- "lightgrey"
-    lwd <- 1
-    pcex <- 2
-    trend.alpha <- 0.5
-    trend.size <- 2
-    hline.size <- 1
-    line.size <- 2
-    hline.alpha <- 0.35
-    hline.lty <- "dashed"
-    label.size <- 5
-    hjust.label <- 1.5
-    letter_size <- 4
-    errorbar.width <- 0.25
-    x.shade.min <- shadedRegion[1]
-    x.shade.max <- shadedRegion[2]
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "calfin", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Calanus finmarchicus")
+```
 
-    setup <- list(
-      shade.alpha = shade.alpha,
-      shade.fill =shade.fill,
-      lwd = lwd,
-      pcex = pcex,
-      trend.alpha = trend.alpha,
-      trend.size = trend.size,
-      line.size = line.size,
-      hline.size = hline.size,
-      hline.alpha = hline.alpha,
-      hline.lty = hline.lty,
-      errorbar.width = errorbar.width,
-      label.size = label.size,
-      hjust.label = hjust.label,
-      letter_size = letter_size,
-      x.shade.min = x.shade.min,
-      x.shade.max = x.shade.max
-    )
-    
-
-    fix<- splitoutput |>
-      dplyr::filter(Data %in% c("calfin"),
-                    Region %in% filterEPUs) |>
-      dplyr::group_by(Region, Season) |>
-      dplyr::summarise(max = max(Estimate))
-    
-    p <- splitoutput |>
-      dplyr::filter(Data %in% c("calfin"),
-                    Region %in% filterEPUs) |>
-      dplyr::group_by(Region, Season) |>
-      dplyr::left_join(fix) |>
-      dplyr::mutate(#Value = Value/resca,
-        Mean = as.numeric(Estimate),
-        SE = Std..Error.for.Estimate,
-        Mean = Mean/max,
-        SE = SE/max,
-        Upper = Mean + SE,
-        Lower = Mean - SE) |>
-      ggplot2::ggplot(ggplot2::aes(x = Time, y = Mean, group = Season))+
-      ggplot2::annotate("rect", fill = setup$shade.fill, alpha = setup$shade.alpha,
-                        xmin = setup$x.shade.min , xmax = setup$x.shade.max,
-                        ymin = -Inf, ymax = Inf) +
-      ggplot2::geom_ribbon(ggplot2::aes(ymin = Lower, ymax = Upper, fill = Season), alpha = 0.5)+
-      ggplot2::geom_point()+
-      ggplot2::geom_line()+
-      ggplot2::ggtitle("Calanus finmarchicus")+
-      ggplot2::ylab(expression("Relative abundance"))+
-      ggplot2::xlab(ggplot2::element_blank())+
-      ggplot2::facet_wrap(Region~Season, ncol = 2)+
-      ecodata::geom_gls()+
-      ecodata::theme_ts()+
-      ecodata::theme_facet()+
-      ecodata::theme_title()
-    
-    p
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "euph", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Euphausiids")
 
 ```
 
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "hyper", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Hyperiids")
+
+```
+
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "zoopvolume", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Zooplankton volume")
+
+```
 
