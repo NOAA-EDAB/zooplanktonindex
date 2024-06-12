@@ -33,7 +33,7 @@ Zoopvolume models were initially estimating spatial or spatio-temporal random ef
 
 Most models are using the half year split for seasons where SPRING = months 1-6 and FALL = months 7-12.
 
-One set of calfin models attempted the split into 4 seasons to have spring (months 3-5) and fall (months 9-11) matching trawl survey months and winter and summer in between. There are large data gaps in winter and summer so these models may not run.
+One set of calfin models attempted the split into 4 seasons to have spring (months 3-5) and fall (months 9-11) matching trawl survey months and winter and summer in between. There are large data gaps in winter and summer and apparently also spring. Only the fall model ran and results are included below under the name `_fall_4season_`. 
 
 
 # Table of current model stats
@@ -155,7 +155,9 @@ modcompare <- purrr::map_dfr(moddirs, getmodinfo)
 
 modselect <- modcompare %>%
   dplyr::mutate(season = case_when(str_detect(modname, "_fall_") ~ "Fall",
+                                   #str_detect(modname, "_fall_4season_") ~ "Fall4seas",
                             str_detect(modname, "_spring_") ~ "Spring",
+                            #str_detect(modname, "_spring_4season_") ~ "Spring4seas",
                             str_detect(modname, "_summer_") ~ "Summer",
                             str_detect(modname, "_winter_") ~ "Winter",
                             TRUE ~ as.character(NA))) %>%
@@ -321,7 +323,11 @@ getmodindex <- function(d.name){
   modpath <- stringr::str_split(d.name, "/", simplify = TRUE)
   modname <- modpath[length(modpath)]
   
-  index <- read.csv(file.path(d.name, "Index.csv"))
+  if(file.exists(file.path(d.name,"Index.csv"))){
+    index <- read.csv(file.path(d.name, "Index.csv"))
+  }else{
+    stopifnot()
+  }
   # return model indices as a dataframe
   out <- data.frame(modname = modname,
                     index
@@ -330,7 +336,7 @@ getmodindex <- function(d.name){
   return(out)
 }
 
-modcompareindex <- purrr::map_dfr(moddirs, getmodindex)
+modcompareindex <- purrr::map_dfr(moddirs, purrr::possibly(getmodindex, otherwise = NULL))
 
 splitoutput <- modcompareindex %>%
   dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
@@ -418,7 +424,7 @@ plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
       SE = SE/max,
       Upper = Mean + SE,
       Lower = Mean - SE) |>
-    ggplot2::ggplot(ggplot2::aes(x = Time, y = Mean, group = Season))+
+    ggplot2::ggplot(ggplot2::aes(x = Time, y = Mean, linetype = modname, group = modname))+
     ggplot2::annotate("rect", fill = setup$shade.fill, alpha = setup$shade.alpha,
                       xmin = setup$x.shade.min , xmax = setup$x.shade.max,
                       ymin = -Inf, ymax = Inf) +
@@ -428,11 +434,12 @@ plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
     ggplot2::ggtitle(plottitle)+
     ggplot2::ylab(expression("Relative abundance"))+
     ggplot2::xlab(ggplot2::element_blank())+
-    ggplot2::facet_wrap(Region~Season, ncol = 2)+
+    ggplot2::facet_wrap(Region~Season, ncol = 2, labeller = label_wrap_gen(multi_line=FALSE))+
     ecodata::geom_gls()+
     ecodata::theme_ts()+
     ecodata::theme_facet()+
-    ecodata::theme_title()
+    ecodata::theme_title() +
+    ggplot2::theme(legend.position = "bottom")
   
   return(p)
 }
@@ -441,7 +448,7 @@ plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
 plot_zooindices(splitoutput = splitoutput, 
              plotdata = "calfin", 
              plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
-             plottitle = "Calanus finmarchicus")
+             plottitle = "Calanus finmarchicus") 
 ```
 
 ```{r, fig.height=10}
