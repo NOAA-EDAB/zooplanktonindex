@@ -195,7 +195,7 @@ settings = make_settings( n_x = 500,
 #########################################################
 # Run model fall
 
-season <- c("fall_500_test")
+season <- c("fall_500_test22")
 
 working_dir <- here::here(sprintf("pyindex/calfin_%s/", season))
 
@@ -227,7 +227,7 @@ plot( fit,
 ######################################################
 # Run model spring
 
-season <- c("spring_500_test")
+season <- c("spring_500_test22")
 
 working_dir <- here::here(sprintf("pyindex/calfin_%s/", season))
 

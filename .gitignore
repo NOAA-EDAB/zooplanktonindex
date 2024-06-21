@@ -39,6 +39,8 @@ vignettes/*.pdf
 # mac stuff
 .DS_Store
 
+data/EcoMon Data_NCEI/
+
 # R Environment Variables
 .Renviron
 

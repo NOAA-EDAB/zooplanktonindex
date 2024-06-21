@@ -205,8 +205,26 @@ These are the corresponding species names, with Large copepods denoted by *
 
 Centropages typicus, Calanus finmarchicus\*, Pseudocalanus spp., Temora longicornis, Centropages hamatus, Paracalanus parvus, Acartia spp., Metridia lucens\*, Calanus minor\*, Clausocalanus arcuicornis, Acartia longiremis, Eucalanus spp.\*, Clausocalanus furcatus,  Calanus spp.\*, Temora stylifera, Temora spp., Tortanus discaudatus, Paracalanus spp.
 
+Added four more categories based on discussion with ToR 1 subgroup:
+
+Small copepods ALL:  
+
+Centropages typicus, Pseudocalanus spp., Temora longicornis, Centropages hamatus, Paracalanus parvus, Acartia spp., Clausocalanus arcuicornis, Acartia longiremis, Clausocalanus furcatus,  Temora stylifera, Temora spp., Tortanus discaudatus, Paracalanus spp.
+
+Large copepods ALL:  
+
+Calanus finmarchicus\*,  Metridia lucens\*, Calanus minor\*,  Eucalanus spp.\*,  Calanus spp.\*
+
+Small copeopods SOE (used in small-large index):
+
+Centropages typicus, Pseudocalanus spp., Temora longicornis, Centropages hamatus
+
+Large copeopds SOE (used in small-large index) = Calanus finmarchicus\*
+
 
 Dataset years extend from `r sort(unique(herringfood$year))[1]` to `r sort(unique(herringfood$year))[length(unique(herringfood$year))]`
+
+(As of June 21, data expanded to include Fall 2022, but table still covers old dataset because I've been asked not to distribute the new dataset yet. Models run after 21 June will use data through 2022 from new dataset.)
 
 This is a list of stations with nonzero samples by year and month to better understand seasonal coverage. 
 
@@ -232,6 +250,8 @@ Let's start with the `_100m3` numbers for each category. We can try one with the
 Lets look at the spatial extent of the data in each season to see if we need to limit model domain. A test model of total zoop biovolume (present at each station in many years) failed using the full set of EPUs because the spatial random effects parameter was headed for 0. This is what happened to the herring index fall model when there were no observations in the southern end of the domain.
 
 This is zooplankton volume by season (half years)
+
+Now using data processed in [`VASTzoopindex_processinputs.R`](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/data/VASTzoopindex_processinputs.R)
 
 ```{r}
 herringfood_stn <- readRDS(here::here("data/herringfood_stn_all.rds"))
@@ -376,7 +396,7 @@ Likely surface temperature is more relevant for zooplankton?
 
 Missing temperature data by year and season (SPRING and FALL):
 ```{r}
-stnsummary <- herringfood %>%
+stnsummary <- herringfood_stn %>%
   #dplyr::filter(year>1984) %>%
   dplyr::group_by(year, season_ng) %>%
   dplyr::summarise(nstation = n(),
@@ -404,7 +424,7 @@ flextable::flextable(stnsummary) %>%
 
 Missing temperature data by year and season (winter, spring, summer, fall):
 ```{r}
-stnsummary <- herringfood %>%
+stnsummary <- herringfood_stn %>%
   #dplyr::filter(year>1984) %>%
   dplyr::group_by(year, season_4) %>%
   dplyr::summarise(nstation = n(),
