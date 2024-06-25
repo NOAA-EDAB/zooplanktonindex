@@ -160,6 +160,7 @@ modselect <- modcompare %>%
                             #str_detect(modname, "_spring_4season_") ~ "Spring4seas",
                             str_detect(modname, "_summer_") ~ "Summer",
                             str_detect(modname, "_winter_") ~ "Winter",
+                            str_detect(modname, "_annual_") ~ "Annual",
                             TRUE ~ as.character(NA))) %>%
   dplyr::mutate(converged2 = case_when(str_detect(converged, "no evidence") ~ "likely",
                                 str_detect(converged, "is likely not") ~ "unlikely",
@@ -360,6 +361,10 @@ plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
   
   filterEPUs <- plotregions #c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU")
   
+  seasons <- splitoutput |> dplyr::filter(Data==plotdata) |> dplyr::select(Season) |> dplyr::distinct()
+  
+  ncols <- dim(seasons)[1]
+  
   currentMonth <- lubridate::month(Sys.Date())
   currentYear <- lubridate::year(Sys.Date())
   if (currentMonth > 4) {
@@ -434,7 +439,8 @@ plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
     ggplot2::ggtitle(plottitle)+
     ggplot2::ylab(expression("Relative abundance"))+
     ggplot2::xlab(ggplot2::element_blank())+
-    ggplot2::facet_wrap(Region~Season, ncol = 2, labeller = label_wrap_gen(multi_line=FALSE))+
+    ggplot2::facet_wrap(Region~Season, ncol = ncols, 
+                        labeller = label_wrap_gen(multi_line=FALSE))+
     ecodata::geom_gls()+
     ecodata::theme_ts()+
     ecodata::theme_facet()+
@@ -450,6 +456,51 @@ plot_zooindices(splitoutput = splitoutput,
              plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
              plottitle = "Calanus finmarchicus") 
 ```
+
+
+Compare calfin annual VAST (blue) with SOE annual anomalies (black)
+
+```{r}
+
+VASTmean <- splitoutput |>
+    dplyr::filter(Data %in% c("calfin"),
+                  Season %in% c("annual"),
+                  Region %in% c("MAB", "GB", "GOM")) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::summarise(tsmean = mean(Estimate))
+
+VASTanom <- splitoutput |>
+    dplyr::filter(Data %in% c("calfin"),
+                  Season %in% c("annual"),
+                  Region %in% c("MAB", "GB", "GOM")) |>
+    dplyr::left_join(VASTmean) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::mutate(#Value = Value/resca,
+      Mean = as.numeric(Estimate),
+      SE = Std..Error.for.Estimate,
+      Mean = (Mean-tsmean)/tsmean,
+      SE = (SE-tsmean)/tsmean,
+      Upper = Mean + SE,
+      Lower = Mean - SE) |>
+  dplyr::rename(EPU = Region)
+
+SOEcalfin <- ecodata::zoo_abundance_anom |>
+  dplyr::mutate(Value = as.numeric(Value)) |>
+  dplyr::filter(Var == "Calfin") |>
+  ggplot2::ggplot(aes(x = Time, y = Value)) +
+  ggplot2::geom_point() + 
+  ggplot2::geom_line() + 
+  ecodata::geom_gls() +
+  ggplot2::geom_line(data = VASTanom, aes(x=Time, y=Mean), color = "blue") +
+  ecodata::theme_facet() +
+  ggplot2::facet_wrap(~EPU)
+
+SOEcalfin
+
+```
+
+
+Other species
 
 ```{r, fig.height=10}
 plot_zooindices(splitoutput = splitoutput, 
