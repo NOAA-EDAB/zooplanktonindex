@@ -2,7 +2,9 @@
 title: "Copepod Model Selection"
 author: "Sarah Gaichas"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    code_fold: hide
 ---
 ## VAST model selection
 
@@ -167,49 +169,48 @@ Model selection 1 (spatial, spatio-temporal effects, no covariates) options (fol
 
 
 ```{r modsel1}
-modselect <- modcompare %>%
-  dplyr::mutate(season = case_when(str_detect(modname, "_fall_") ~ "Fall",
-                            str_detect(modname, "spring") ~ "Spring",
-                            str_detect(modname, "_all_") ~ "Annual",
-                            TRUE ~ as.character(NA))) %>%
-  dplyr::mutate(converged2 = case_when(str_detect(converged, "no evidence") ~ "likely",
-                                str_detect(converged, "is likely not") ~ "unlikely",
-                                TRUE ~ as.character(NA))) %>%
-  dplyr::mutate(bengroup = case_when(str_detect(modname, "macroben") ~ "macrobenthos",
-                                str_detect(modname, "megaben") ~ "megabenthos",
-                                TRUE ~ as.character(NA))) %>%
+modselect <- modcompare |>
+  dplyr::mutate(season = dplyr::case_when(stringr::str_detect(modname, "_fall_") ~ "Fall",
+                            stringr::str_detect(modname, "spring") ~ "Spring",
+                            stringr::str_detect(modname, "_all_") ~ "Annual",
+                            TRUE ~ as.character(NA))) |>
+  dplyr::mutate(converged2 = dplyr::case_when(stringr::str_detect(converged, "no evidence") ~ "likely",
+                                stringr::str_detect(converged, "is likely not") ~ "unlikely",
+                                TRUE ~ as.character(NA))) |>
+  dplyr::mutate(copegroup = stringr::str_extract(modname, "[^_]+")) |>
   #dplyr::mutate(modname = str_extract(modname, '(?<=allagg_).*')) |>
-  dplyr::group_by(bengroup, season) %>%
-  dplyr::mutate(deltaAIC = AIC-min(AIC)) %>%
-  dplyr::select(modname, season, deltaAIC, fixedcoeff,
+  dplyr::group_by(copegroup, season) |>
+  dplyr::mutate(deltaAIC = AIC-min(AIC)) |>
+  dplyr::select(copegroup, modname, season, deltaAIC, fixedcoeff,
          randomcoeff, use_anisotropy, 
          omega1, omega2, epsilon1, epsilon2, 
-         beta1, beta2, AIC, converged2) %>%
-  dplyr::arrange(season, AIC)
+         beta1, beta2, AIC, converged2) |>
+  dplyr::arrange(copegroup, season, AIC)
 
 # DT::datatable(modselect, rownames = FALSE, 
 #               options= list(pageLength = 25, scrollX = TRUE),
 #               caption = "Comparison of delta AIC values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures. See text for model descriptions.")
 
-flextable::flextable(modselect %>%
+flextable::flextable(modselect |>
                        dplyr::select(-c(use_anisotropy, 
          omega1, omega2, epsilon1, epsilon2, 
-         beta1, beta2))) %>%
-  flextable::set_header_labels(modname = "Model name",
+         beta1, beta2))) |>
+  flextable::set_header_labels(copegroup = "Copepod group",
+                               modname = "Model name",
                                season = "Season",
                                deltaAIC = "dAIC",
                                fixedcoeff = "N fixed",
                                randomcoeff = "N random",
                                converged2 = "Convergence") |>
-  flextable::set_caption("Comparison of delta AIC (dAIC) values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures, with number of fixed (N fixed) and random (N random) coefficients. See text for model descriptions associated with each model name.") %>%
-  flextable::fontsize(size = 9, part = "all") %>%
+  flextable::set_caption("Comparison of delta AIC (dAIC) values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures, with number of fixed (N fixed) and random (N random) coefficients. See text for model descriptions associated with each model name.") |>
+  flextable::fontsize(size = 9, part = "all") |>
   flextable::colformat_double(digits = 2) |>
   flextable::set_table_properties(layout = "autofit", width = 1)
 ```
 
 Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for both macrobenthos and megabenthos. 
 
-Full outputs from stage 1 mmodel selection are posted to google drive [here](https://drive.google.com/drive/folders/1hiSkfavmvnSx0baCczty0upjFmK6YHin?usp=drive_link). 
+Full outputs from stage 1 model selection are posted to google drive [here](). 
 
 All models in stage 2 included spatial and spatio-temporal random effects and anisotropy. 
 
