@@ -373,11 +373,11 @@ allEPU2 <- FishStatsUtils::northwest_atlantic_grid %>%
 #####################################################################################
 # Link distribution
 
-# default for index2
-ObsModel  <-  c(2,1) # this is "Index2", Gamma distribution for positive catches and Alternative "Poisson-link delta-model" using log-link for numbers-density and log-link for biomass per number
+# default for index2: works for calfin and lgcopeALL
+ObsModel1  <-  c(2,1) # this is "Index2", Gamma distribution for positive catches and Alternative "Poisson-link delta-model" using log-link for numbers-density and log-link for biomass per number
 
 # alternative for models where we encounter stuff everywhere (zooplankton volume, maybe small copepods)
-ObsModel  <-  c(2,4) # should be Gamma distribution for positive catches and Poisson-link fixing encounter probability=1 for any year where all samples encounter the species
+ObsModel2  <-  c(2,4) # should be Gamma distribution for positive catches and Poisson-link fixing encounter probability=1 for any year where all samples encounter the species
 
 # Model selection 1 (spatial, spatio-temporal effects, no covariates) options and naming:
 # Use_REML = TRUE in fit_model
@@ -445,6 +445,11 @@ mod.dat <- list(calfin_stn_fall, calfin_stn_spring,
 
 names(mod.dat) <- mod.season
 
+mod.obsmod <- list(ObsModel1, ObsModel1, ObsModel1, ObsModel1,
+                   ObsModel2, ObsModel2, ObsModel2, ObsModel2)
+
+names(mod.obsmod) <- mod.season
+
 mod.config <- c("alleffectson", "noaniso", 
                 "noomeps2", "noomeps2_noaniso", 
                 "noomeps2_noeps1", "noomeps2_noeps1_noaniso",
@@ -494,6 +499,7 @@ for(season in mod.season){
     
     FieldConfig <- mod.FieldConfig[[config]]
     use_anisotropy <- mod.use_anistropy[[config]]
+    ObsModel <- mod.obsmod[[season]]
     
     settings <- make_settings( n_x = 500, 
                                Region = "northwest_atlantic",
@@ -501,6 +507,7 @@ for(season in mod.season){
                                #strata.limits = list('All_areas' = 1:1e5), full area
                                strata.limits = strata.limits,
                                purpose = "index2", 
+                               ObsModel = ObsModel,
                                bias.correct = FALSE,
                                use_anisotropy = use_anisotropy,
                                FieldConfig = FieldConfig,
