@@ -8,12 +8,23 @@ output:
 ---
 ## VAST model selection
 
+Copepod categories based on discussion with ToR 1 subgroup:
+
+*   Calanus finmarchicus, a.k.a. Large copeopds SOE (used in small-large index) 
+
+*   Large copepods ALL:  Calanus finmarchicus,  Metridia lucens, Calanus minor,  Eucalanus spp.,  Calanus spp.
+
+*   Small copepods ALL:  Centropages typicus, Pseudocalanus spp., Temora longicornis, Centropages hamatus, Paracalanus parvus, Acartia spp., Clausocalanus arcuicornis, Acartia longiremis, Clausocalanus furcatus,  Temora stylifera, Temora spp., Tortanus discaudatus, Paracalanus spp.
+
+*   Small copeopods SOE (used in small-large index):  Centropages typicus, Pseudocalanus spp., Temora longicornis, Centropages hamatus
+
+
 Lets do the same model selection as previously. Two stages, first looking at spatial, spatio-temporal random effects and the second looking at covariates. Selection is done for spring and fall models for:
 
-*  Calanus finmarchicus (calfin_100m3),
-*  Large copepods (calfin_100m3, mlucens_100m3, calminor_100m3, euc_100m3, calspp_100m3), 
-*  Small copepods (all) (ctyp_100m3, pseudo_100m3, tlong_100m3, cham_100m3, para_100m3, acarspp_100m3, clauso, acarlong_100m3, fur_100m3, ost_100m3, temspp_100m3, tort_100m3, paraspp_100m3) and 
-*  Small copepods (SOE) (ctyp_100m3, pseudo_100m3, tlong_100m3, cham_100m3).
+*  Calanus finmarchicus (calfin_100m3) = "calfin" in table below,
+*  Large copepods (calfin_100m3, mlucens_100m3, calminor_100m3, euc_100m3, calspp_100m3) = "lgcopeALL", 
+*  Small copepods (all) (ctyp_100m3, pseudo_100m3, tlong_100m3, cham_100m3, para_100m3, acarspp_100m3, clauso, acarlong_100m3, fur_100m3, ost_100m3, temspp_100m3, tort_100m3, paraspp_100m3) = "smallcopeALL" and 
+*  Small copepods (SOE) (ctyp_100m3, pseudo_100m3, tlong_100m3, cham_100m3) = "smallcopeSOE".
 
 Model selection script is 
 https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/VASTscripts/VASTunivariate_zoopindex_modselection.R
@@ -208,7 +219,7 @@ flextable::flextable(modselect |>
   flextable::set_table_properties(layout = "autofit", width = 1)
 ```
 
-Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for both macrobenthos and megabenthos. 
+Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for calfin, lgcopeALL, smallcopeALL, and .... 
 
 Full outputs from stage 1 model selection are posted to google drive [here](). 
 
