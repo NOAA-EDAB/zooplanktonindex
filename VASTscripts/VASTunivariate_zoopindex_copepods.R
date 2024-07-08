@@ -490,7 +490,7 @@ for(season in mod.season){
       working_dir = paste0(working_dir, "/"))
     )
     
-    #saveRDS(fit, file = paste0(working_dir, "/fit.rds"))
+    saveRDS(fit, file = paste0(working_dir, "/fit.rds"))
     
     # Plot results
     if(!class(fit)=="try-error"){
