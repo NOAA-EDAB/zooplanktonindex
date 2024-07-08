@@ -236,7 +236,7 @@ smallcopeALL_stn_spring <- herringfood_stn %>%
 
 smallcopeSOE_stn_ann <- herringfood_stn %>%
   #ungroup() %>%
-  filter(#season_ng == "FSOE", # Annual model for MRIP index
+  filter(#season_ng == "FALL", # Annual model for MRIP index
     year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
@@ -259,7 +259,7 @@ smallcopeSOE_stn_ann <- herringfood_stn %>%
 
 smallcopeSOE_stn_fall <- herringfood_stn %>%
   #ungroup() %>%
-  filter(season_ng == "FSOE", 
+  filter(season_ng == "FALL", 
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
