@@ -5,6 +5,10 @@ date: "`r Sys.Date()`"
 output:
   html_document:
     code_fold: hide
+link-citations: yes
+csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
+bibliography: zoopindex.bib
+urlcolor: blue
 ---
 ## VAST model selection
 
@@ -35,7 +39,7 @@ Two different observation models were applied. The default VAST index standardiz
 
 We applied the default observation model to Calanus finmarchicus (calfin_100m3) and Large copepods (calfin_100m3 + mlucens_100m3 + calminor_100m3 + euc_100m3 + calspp_100m3) datasets.
 
-The default was used for index standardization of stomach contents data for pelagic and benthic forage indices. It is intended for continuous data, which includes biomass data and "numbers standardized to a fixed area" (see section starting at line 239 in the VAST user manual [here](https://github.com/James-Thorson-NOAA/VAST/blob/main/manual/VAST_model_structure.pdf). I am interpreting zooplankton abundance per 100 cubic meters and numbers standardized to a fixed area (volume) in applying the Gamma observation model.
+The default was used for index standardization of stomach contents data for pelagic and benthic forage indices. It is intended for continuous data, which includes biomass data and "numbers standardized to a fixed area" (see section starting at line 239 in the VAST user manual [here](https://github.com/James-Thorson-NOAA/VAST/blob/main/manual/VAST_model_structure.pdf). I am interpreting zooplankton abundance per 100 cubic meters as numbers standardized to a fixed area (volume) in applying the Gamma observation model.
 
 For data where there are some years where the species is present in all (or 0) samples, estimating the probability of encounter fails (or at least, VAST won't let you try). In these cases, the options are to treat intercepts representing temporal variability as random effects (by setting `RhoConfig` `Beta` or `Epsilon` entries to something other than 0), or to use a different link function. 
 
@@ -219,9 +223,13 @@ flextable::flextable(modselect |>
   flextable::set_table_properties(layout = "autofit", width = 1)
 ```
 
-Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for calfin, lgcopeALL, smallcopeALL, and .... 
+Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for calfin, lgcopeALL, smallcopeALL, and smallcopeSOE. 
 
-Full outputs from stage 1 model selection are posted to google drive [here](). 
+Full outputs from stage 1 model selection are posted to google drive [here](https://drive.google.com/drive/folders/1szQzBbn-bQosPK4AqKRbfbduGGMM-BDG?usp=drive_link). 
 
-All models in stage 2 included spatial and spatio-temporal random effects and anisotropy. 
+We haven't done stage 2 yet; thoughts on what might be appropriate covariates (if any) are welcome.
+
+## References
+
+
 
