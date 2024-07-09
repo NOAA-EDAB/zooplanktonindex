@@ -342,15 +342,16 @@ modcompareindex <- purrr::map_dfr(moddirs, purrr::possibly(getmodindex, otherwis
 splitoutput <- modcompareindex %>%
   dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
   dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
   dplyr::left_join(stratlook) #%>%
   #dplyr::filter(Region %in% c(GOM", "GB", "MAB","SS", "AllEPU")) use all regions
 
-zoomax <- max(splitoutput$Estimate)
+zoomax <- max(splitoutput$Estimate, na.rm=T)
 
 
 zootsmean <- splitoutput %>%
   dplyr::group_by(modname, Region) %>%
-  dplyr::mutate(fmean = mean(Estimate)) 
+  dplyr::mutate(fmean = mean(Estimate, na.rm=T)) 
 
 
 ```
@@ -415,7 +416,7 @@ plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
     dplyr::filter(Data %in% plotdata, #c("calfin"),
                   Region %in% filterEPUs) |>
     dplyr::group_by(Region, Season) |>
-    dplyr::summarise(max = max(Estimate))
+    dplyr::summarise(max = max(Estimate, na.rm=T))
   
   p <- splitoutput |>
     dplyr::filter(Data %in% plotdata, #c("calfin"),

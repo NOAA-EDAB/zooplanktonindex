@@ -20,4 +20,5 @@ output: html_document
 
 <a href="https://noaa-edab.github.io/zooplanktonindex/CopeModSelection.html" target="_blank"> Model selection for copepod groups - July 2024 </a> 
 
+<a href="https://noaa-edab.github.io/zooplanktonindex/CopeModResults.html" target="_blank"> Bias corrected indices and other results for copepod groups - July 2024 </a> 
 

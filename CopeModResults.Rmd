@@ -1,0 +1,570 @@
+---
+title: "Copepod Model Results"
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_fold: hide
+link-citations: yes
+csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
+bibliography: zoopindex.bib
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(tidyverse)
+library(here)
+library(DT)
+library(ggiraph)
+library(patchwork)
+```
+
+# Introduction
+
+These models are for the following copepod categories:
+
+*  Calanus finmarchicus (calfin_100m3) = "calfin" in table below,
+*  Large copepods (calfin_100m3, mlucens_100m3, calminor_100m3, euc_100m3, calspp_100m3) = "lgcopeALL", 
+*  Small copepods (all) (ctyp_100m3, pseudo_100m3, tlong_100m3, cham_100m3, para_100m3, acarspp_100m3, clauso, acarlong_100m3, fur_100m3, ost_100m3, temspp_100m3, tort_100m3, paraspp_100m3) = "smallcopeALL" and 
+*  Small copepods (SOE) (ctyp_100m3, pseudo_100m3, tlong_100m3, cham_100m3) = "smallcopeSOE".
+
+Actual species in each:
+*   Calanus finmarchicus, = Large copeopds SOE (used in small-large index) 
+
+*   Large copepods ALL:  Calanus finmarchicus,  Metridia lucens, Calanus minor,  Eucalanus spp.,  Calanus spp.
+
+*   Small copepods ALL:  Centropages typicus, Pseudocalanus spp., Temora longicornis, Centropages hamatus, Paracalanus parvus, Acartia spp., Clausocalanus arcuicornis, Acartia longiremis, Clausocalanus furcatus,  Temora stylifera, Temora spp., Tortanus discaudatus, Paracalanus spp.
+
+*   Small copeopods SOE (used in small-large index):  Centropages typicus, Pseudocalanus spp., Temora longicornis, Centropages hamatus
+
+Model selection looked at inclusion of different spatial and spatio-temporal random effects. Testing alwaus included all of them. See [here](https://noaa-edab.github.io/zooplanktonindex/CopeModSelection.html). 
+
+Therefore I attempted to run bias-corrected models for each copepod category and 6 month season (Spring = Jan-June, Fall = July-December). All but one worked.
+
+## Table of current model stats
+
+```{r}
+# from each output folder in pyindex, 
+outdir <- here::here("pyindex")
+moddirs <- list.dirs(outdir) 
+moddirs <- moddirs[-1]
+# keep folder name
+modnames <- list.dirs(outdir, full.names = FALSE)
+
+
+# function to apply extracting info
+getmodinfo <- function(d.name){
+  # read settings
+  modpath <- stringr::str_split(d.name, "/", simplify = TRUE)
+  modname <- modpath[length(modpath)]
+  
+  settings <- read.table(file.path(d.name, "settings.txt"), comment.char = "",
+    fill = TRUE, header = FALSE)
+  
+  n_x <- as.numeric(as.character(settings[(which(settings[,1]=="$n_x")+1),2]))
+  grid_size_km <- as.numeric(as.character(settings[(which(settings[,1]=="$grid_size_km")+1),2]))
+  max_cells <- as.numeric(as.character(settings[(which(settings[,1]=="$max_cells")+1),2]))
+  use_anisotropy <- as.character(settings[(which(settings[,1]=="$use_anisotropy")+1),2])
+  fine_scale <- as.character(settings[(which(settings[,1]=="$fine_scale")+1),2])
+  bias.correct <- as.character(settings[(which(settings[,1]=="$bias.correct")+1),2])
+  
+  #FieldConfig
+  if(settings[(which(settings[,1]=="$FieldConfig")+1),1]=="Component_1"){
+    omega1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+2),2])
+    omega2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+3),1])
+    epsilon1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+4),2])
+    epsilon2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+5),1])
+    beta1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+6),2])
+    beta2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+7),1])
+  }
+  
+  if(settings[(which(settings[,1]=="$FieldConfig")+1),1]=="Omega1"){
+    omega1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+3),1])
+    omega2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+4),1])
+    epsilon1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+3),2])
+    epsilon2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+4),2])
+    beta1 <- "IID"
+    beta2 <- "IID"
+  }
+  
+  
+  #RhoConfig
+  rho_beta1 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+3),1]))
+  rho_beta2 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+3),2]))
+  rho_epsilon1 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+4),1]))
+  rho_epsilon2 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+4),2]))
+  
+  # read parameter estimates, object is called parameter_Estimates
+  if(file.exists(file.path(d.name, "parameter_estimates.RData"))) {
+    load(file.path(d.name, "parameter_estimates.RData"))
+    
+    AIC <- parameter_estimates$AIC[1]  
+    converged <- parameter_estimates$Convergence_check[1]
+    fixedcoeff <- unname(parameter_estimates$number_of_coefficients[2])
+    randomcoeff <- unname(parameter_estimates$number_of_coefficients[3])
+    
+  }else if(file.exists(file.path(d.name, "parameter_estimates.txt"))){
+    
+    reptext <- readLines(file.path(d.name, "parameter_estimates.txt"))
+    
+    AIC <- as.double(reptext[grep(reptext, pattern = "AIC")+1])
+    converged <- reptext[grep(reptext, pattern = "Convergence_check")+1]
+    fixedcoeff <- as.integer(stringr::str_split(reptext[grep(reptext, pattern = "number_of_coefficients")+2], 
+                                     boundary("word"))[[1]][2])
+    randomcoeff <- as.integer(stringr::str_split(reptext[grep(reptext, pattern = "number_of_coefficients")+2], 
+                                     boundary("word"))[[1]][3])
+    
+  }else{
+    
+    AIC <- NA_real_
+    converged <- NA_character_
+    fixedcoeff <- NA_integer_
+    randomcoeff <- NA_integer_
+  }
+  
+  
+  #index <- read.csv(file.path(d.name, "Index.csv"))
+  
+  
+  # return model attributes as a dataframe
+  out <- data.frame(modname = modname,
+                    n_x = n_x,
+                    grid_size_km = grid_size_km,
+                    max_cells = max_cells,
+                    use_anisotropy = use_anisotropy,
+                    fine_scale =  fine_scale,
+                    bias.correct = bias.correct,
+                    omega1 = omega1,
+                    omega2 = omega2,
+                    epsilon1 = epsilon1,
+                    epsilon2 = epsilon2,
+                    beta1 = beta1,
+                    beta2 = beta2,
+                    rho_epsilon1 = rho_epsilon1,
+                    rho_epsilon2 = rho_epsilon2,
+                    rho_beta1 = rho_beta1,
+                    rho_beta2 = rho_beta2,
+                    AIC = AIC,
+                    converged = converged,
+                    fixedcoeff = fixedcoeff,
+                    randomcoeff = randomcoeff#,
+                    #index = index
+  )
+  	
+	return(out)
+
+}
+
+
+modcompare <- purrr::map_dfr(moddirs, getmodinfo)
+
+modselect <- modcompare |>
+  dplyr::mutate(season = dplyr::case_when(stringr::str_detect(modname, "_fall_") ~ "Fall",
+                            stringr::str_detect(modname, "spring") ~ "Spring",
+                            stringr::str_detect(modname, "_all_") ~ "Annual",
+                            TRUE ~ as.character(NA))) |>
+  dplyr::mutate(converged2 = dplyr::case_when(stringr::str_detect(converged, "no evidence") ~ "likely",
+                                stringr::str_detect(converged, "is likely not") ~ "unlikely",
+                                TRUE ~ as.character(NA))) |>
+  dplyr::mutate(copegroup = stringr::str_extract(modname, "[^_]+")) |>
+  #dplyr::mutate(modname = str_extract(modname, '(?<=allagg_).*')) |>
+  dplyr::group_by(copegroup, season) |>
+  dplyr::mutate(deltaAIC = AIC-min(AIC)) |>
+  dplyr::select(copegroup, modname, season, deltaAIC, fixedcoeff,
+         randomcoeff, use_anisotropy, 
+         omega1, omega2, epsilon1, epsilon2, 
+         beta1, beta2, AIC, converged2) |>
+  dplyr::arrange(copegroup, season, AIC)
+
+# DT::datatable(modselect, rownames = FALSE, 
+#               options= list(pageLength = 25, scrollX = TRUE),
+#               caption = "Comparison of delta AIC values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures. See text for model descriptions.")
+
+flextable::flextable(modselect) %>%
+                       #dplyr::select(-c(use_anisotropy, 
+         #omega1, omega2, epsilon1, epsilon2, 
+         #beta1, beta2))
+         #) %>%
+  flextable::set_header_labels(modname = "Model name",
+                               season = "Season",
+                               #deltaAIC = "dAIC",
+                               fixedcoeff = "N fixed",
+                               randomcoeff = "N random",
+                               converged2 = "Convergence") |>
+  #flextable::set_caption("Comparison of delta AIC (dAIC) values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures, with number of fixed (N fixed) and random (N random) coefficients. See text for model descriptions associated with each model name.") %>%
+  flextable::fontsize(size = 9, part = "all") %>%
+  flextable::colformat_double(digits = 2) |>
+  flextable::set_table_properties(layout = "autofit", width = 1)
+
+
+```
+
+
+## Spatial strata for reference
+
+Model results are presented in seven spatial strata:
+
+*  AllEPU is the area covered by green, orange, red, and purple in the EPUs plot on the left
+*  her_sp is the Atlantic herring spring NEFSC bottom trawl survey strata (yellow in center plot)
+*  her_fa is the Atlantic herring fall NEFSC bottom trawl survey strata (yellow in right plot)
+*  MAB is the Mid Atlantic Bight, green in the left plot
+*  GB is Georges Bank, orange in the left plot
+*  GOM is the Gulf of Maine, red in the left plot
+*  SS is the Scotian Shelf, purple in the left plot
+
+The brown grid is the full Northwest Atlantic grid built into VAST, we are not using the area south of Cape Hatteras.
+
+
+```{r}
+
+theme_set(theme_bw())
+
+herring_spring <- c(01010, 01020, 01030, 01040, 01050, 01060, 01070, 01080, 01090, 
+                    01100, 01110, 01120, 01130, 01140, 01150, 01160, 01170, 01180, 
+                    01190, 01200, 01210, 01220, 01230, 01240, 01250, 01260, 01270, 
+                    01280, 01290, 01300, 01360, 01370, 01380, 01390, 01400, 01610, 
+                    01620, 01630, 01640, 01650, 01660, 01670, 01680, 01690, 01700, 
+                    01710, 01720, 01730, 01740, 01750, 01760)
+herring_fall <- c(01050, 01060, 01070, 01080, 01090, 01100, 01110, 01120, 01130, 
+                  01140, 01150, 01160, 01170, 01180, 01190, 01200, 01210, 01220, 
+                  01230, 01240, 01250, 01260, 01270, 01280, 01290, 01300, 01360, 
+                  01370, 01380, 01390, 01400)
+
+herring_springgrid <-  FishStatsUtils::northwest_atlantic_grid %>%
+  filter(stratum_number %in% herring_spring)
+
+herring_fallgrid <-  FishStatsUtils::northwest_atlantic_grid %>%
+  filter(stratum_number %in% herring_fall)
+
+MAB <- c(1010:1080, 1100:1120, 1600:1750, 3010:3450, 3470, 3500, 3510)
+GB  <- c(1090, 1130:1210, 1230, 1250, 3460, 3480, 3490, 3520:3550)
+GOM <- c(1220, 1240, 1260:1290, 1360:1400, 3560:3830)
+SS  <- c(1300:1352, 3840:3990)
+
+# Mid Atlantic Bight EPU
+MABgrid <- FishStatsUtils::northwest_atlantic_grid %>% 
+  dplyr::filter(stratum_number %in% MAB) 
+
+# Georges Bank EPU
+GBgrid <- FishStatsUtils::northwest_atlantic_grid %>% 
+  dplyr::filter(stratum_number %in% GB) 
+
+# gulf of maine EPU (for SOE)
+GOMgrid <- FishStatsUtils::northwest_atlantic_grid %>% 
+  dplyr::filter(stratum_number %in% GOM) 
+
+# scotian shelf EPU (for SOE)
+SSgrid <- FishStatsUtils::northwest_atlantic_grid %>%  
+  dplyr::filter(stratum_number %in% SS) 
+
+
+EPUs <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = MABgrid, aes(x = Lon, y = Lat), colour = "green", size=0.05, alpha=0.1) +
+  geom_point(data = GBgrid, aes(x = Lon, y = Lat), colour = "orange", size=0.05, alpha=0.1) +
+  geom_point(data = GOMgrid, aes(x = Lon, y = Lat), colour = "red", size=0.05, alpha=0.1) +
+  geom_point(data = SSgrid, aes(x = Lon, y = Lat), colour = "purple", size=0.05, alpha=0.1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("EPUs eco prod units")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+  
+Fall <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = herring_fallgrid, aes(x = Lon, y = Lat),  colour = "yellow", size=0.05, alpha=0.1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Fall herring BTS")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+
+Spring <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = herring_springgrid, aes(x = Lon, y = Lat),  colour = "yellow", size=0.05, alpha=0.1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Spring herring BTS")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+ 
+EPUs + Spring + Fall
+```
+
+## Stations by season
+
+These are the same for all models
+
+```{r, results = "asis"}
+for(d.name in moddirs[str_detect(moddirs, "calfin")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  cat(paste0("![](",d.name, "/Data_by_year.png)"))
+  cat("\n\n")
+  
+}
+```
+
+# Indices by group, season, and region
+
+```{r}
+stratlook <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
+
+# function to apply extracting info
+getmodindex <- function(d.name){
+  # read settings
+  modpath <- stringr::str_split(d.name, "/", simplify = TRUE)
+  modname <- modpath[length(modpath)]
+  
+  if(file.exists(file.path(d.name,"Index.csv"))){
+    index <- read.csv(file.path(d.name, "Index.csv"))
+  }else{
+    stopifnot()
+  }
+  # return model indices as a dataframe
+  out <- data.frame(modname = modname,
+                    index
+  )
+  
+  return(out)
+}
+
+modcompareindex <- purrr::map_dfr(moddirs, purrr::possibly(getmodindex, otherwise = NULL))
+
+splitoutput <- modcompareindex %>%
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook) #%>%
+  #dplyr::filter(Region %in% c(GOM", "GB", "MAB","SS", "AllEPU")) use all regions
+
+zoomax <- max(splitoutput$Estimate, na.rm=T)
+
+
+zootsmean <- splitoutput %>%
+  dplyr::group_by(modname, Region) %>%
+  dplyr::mutate(fmean = mean(Estimate, na.rm=T)) 
+
+
+```
+
+## Calanus finmarchicus
+
+### Seasonal indices
+
+```{r, fig.height=10}
+
+plot_zooindices <- function(splitoutput, plotdata, plotregions, plottitle){
+  
+  filterEPUs <- plotregions #c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU")
+  
+  seasons <- splitoutput |> dplyr::filter(Data==plotdata) |> dplyr::select(Season) |> dplyr::distinct()
+  
+  ncols <- dim(seasons)[1]
+  
+  currentMonth <- lubridate::month(Sys.Date())
+  currentYear <- lubridate::year(Sys.Date())
+  if (currentMonth > 4) {
+    endShade <- currentYear
+  } else {
+    endShade <- currentYear - 1
+  }
+  shadedRegion <- c(endShade-9,endShade)
+  
+  shade.alpha <- 0.3
+  shade.fill <- "lightgrey"
+  lwd <- 1
+  pcex <- 2
+  trend.alpha <- 0.5
+  trend.size <- 2
+  hline.size <- 1
+  line.size <- 2
+  hline.alpha <- 0.35
+  hline.lty <- "dashed"
+  label.size <- 5
+  hjust.label <- 1.5
+  letter_size <- 4
+  errorbar.width <- 0.25
+  x.shade.min <- shadedRegion[1]
+  x.shade.max <- shadedRegion[2]
+  
+  setup <- list(
+    shade.alpha = shade.alpha,
+    shade.fill =shade.fill,
+    lwd = lwd,
+    pcex = pcex,
+    trend.alpha = trend.alpha,
+    trend.size = trend.size,
+    line.size = line.size,
+    hline.size = hline.size,
+    hline.alpha = hline.alpha,
+    hline.lty = hline.lty,
+    errorbar.width = errorbar.width,
+    label.size = label.size,
+    hjust.label = hjust.label,
+    letter_size = letter_size,
+    x.shade.min = x.shade.min,
+    x.shade.max = x.shade.max
+  )
+  
+  
+  fix<- splitoutput |>
+    dplyr::filter(Data %in% plotdata, #c("calfin"),
+                  Region %in% filterEPUs) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::summarise(max = max(Estimate, na.rm=T))
+  
+  p <- splitoutput |>
+    dplyr::filter(Data %in% plotdata, #c("calfin"),
+                  Region %in% filterEPUs) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::left_join(fix) |>
+    dplyr::mutate(#Value = Value/resca,
+      Mean = as.numeric(Estimate),
+      SE = Std..Error.for.Estimate,
+      Mean = Mean/max,
+      SE = SE/max,
+      Upper = Mean + SE,
+      Lower = Mean - SE) |>
+    ggplot2::ggplot(ggplot2::aes(x = Time, y = Mean, linetype = modname, group = modname))+
+    ggplot2::annotate("rect", fill = setup$shade.fill, alpha = setup$shade.alpha,
+                      xmin = setup$x.shade.min , xmax = setup$x.shade.max,
+                      ymin = -Inf, ymax = Inf) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = Lower, ymax = Upper, fill = Season), alpha = 0.5)+
+    ggplot2::geom_point()+
+    ggplot2::geom_line()+
+    ggplot2::ggtitle(plottitle)+
+    ggplot2::ylab(expression("Relative abundance"))+
+    ggplot2::xlab(ggplot2::element_blank())+
+    ggplot2::facet_wrap(Region~Season, ncol = ncols, 
+                        labeller = label_wrap_gen(multi_line=FALSE))+
+    ecodata::geom_gls()+
+    ecodata::theme_ts()+
+    ecodata::theme_facet()+
+    ecodata::theme_title() +
+    ggplot2::theme(legend.position = "bottom")
+  
+  return(p)
+}
+
+
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "calfin", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Calanus finmarchicus") 
+```
+
+### Density estimates
+
+```{r, results = "asis"}
+for(d.name in moddirs[str_detect(moddirs, "calfin")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  cat("\n\n")
+  
+}
+```
+
+##  All large copepods
+
+### Seasonal indices
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "lgcopeALL", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Large copeopods") 
+```
+
+### Density estimates
+
+```{r, results = "asis"}
+for(d.name in moddirs[str_detect(moddirs, "lgcopeALL")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  cat("\n\n")
+  
+}
+```
+
+## All small copepods
+
+### Seasonal indices
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "smallcopeALL", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Small copeopods (All)") 
+```
+
+### Density estimates
+
+```{r, results = "asis"}
+for(d.name in moddirs[str_detect(moddirs, "smallcopeALL")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  if(file.exists(paste0(d.name, "/ln_density-predicted.png"))){
+    cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  }
+  cat("\n\n")
+  
+}
+```
+
+## Most common 4 small copepods
+
+### Seasonal indices
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "smallcopeSOE", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Small copeopods (SOE subset") 
+```
+
+### Density estimates
+
+```{r, results = "asis"}
+for(d.name in moddirs[str_detect(moddirs, "smallcopeSOE")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  cat("\n\n")
+  
+}
+```
