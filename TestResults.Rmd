@@ -40,7 +40,7 @@ One set of calfin models attempted the split into 4 seasons to have spring (mont
 
 ```{r}
 # from each output folder in pyindex, 
-outdir <- here::here("pyindex")
+outdir <- here::here("pyindex_tests")
 moddirs <- list.dirs(outdir) 
 moddirs <- moddirs[-1]
 # keep folder name
