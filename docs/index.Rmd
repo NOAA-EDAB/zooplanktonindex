@@ -22,3 +22,4 @@ output: html_document
 
 <a href="https://noaa-edab.github.io/zooplanktonindex/CopeModResults.html" target="_blank"> Bias corrected indices and other results for copepod groups - July 2024 </a> 
 
+<a href="https://noaa-edab.github.io/zooplanktonindex/HerringLarvaeExplore.html" target="_blank"> Where and when are herring larvae found in the dataset? - July 2024 </a> 

@@ -1,0 +1,154 @@
+---
+title: "Explore Herring Larvae Indices"
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_fold: hide
+link-citations: yes
+csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
+bibliography: zoopindex.bib
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(tidyverse)
+library(here)
+library(DT)
+library(ggiraph)
+library(patchwork)
+```
+
+# Introduction
+
+Indices of various copeopod groups have been developed: https://noaa-edab.github.io/zooplanktonindex/CopeModResults.html
+
+Now the question is, are the zooplankton available to herring larvae? We will explore data available on herring larvae in the EcoMon (and previous zooplankton) data.
+
+# Methods
+
+Herring larvae data were added to the input dataset in the updated script https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/data/VASTzoopindex_processinputs.R and all stations were re-mapped to OISST data to fill missing temperature values if necessary. 
+
+Where are herring larvae in each of our seasons?
+
+```{r}
+
+herringfood_stn <- readRDS(here::here("data/herringfood_stn_all_OISST.rds"))
+
+# make SST column that uses surftemp unless missing or 0
+
+herringfood_stn <- herringfood_stn %>%
+  dplyr::mutate(sstfill = ifelse((is.na(sfc_temp)|sfc_temp==0), oisst, sfc_temp))
+
+herringlarvae_stn_fall <- herringfood_stn %>%
+  #ungroup() %>%
+  filter(season_ng == "FALL", 
+         year > 1981) %>%
+  mutate(AreaSwept_km2 = 1, #Elizabeth's code
+         #declon = -declon already done before neamap merge
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
+  ) %>% 
+  dplyr::select(Catch_g = cluhar_100m3, #use megabenwt for individuals input in example
+                Year = year,
+                Month = month,
+                Dayofyear,
+                Vessel,
+                AreaSwept_km2,
+                Lat = lat,
+                Lon = lon,
+                #btm_temp, #this leaves out many stations
+                #sfc_temp, #this leaves out many stations
+                #oisst,
+                sstfill
+  ) %>%
+  na.omit() %>%
+  as.data.frame()
+
+herringlarvae_stn_spring <- herringfood_stn %>%
+  #ungroup() %>%
+  filter(season_ng == "SPRING", 
+         year > 1981) %>%
+  mutate(AreaSwept_km2 = 1, #Elizabeth's code
+         #declon = -declon already done before neamap merge
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
+  ) %>% 
+  dplyr::select(Catch_g = cluhar_100m3, #use megabenwt for individuals input in example
+                Year = year,
+                Month = month,
+                Dayofyear,
+                Vessel,
+                AreaSwept_km2,
+                Lat = lat,
+                Lon = lon,
+                #btm_temp, #this leaves out many stations
+                #sfc_temp, #this leaves out many stations
+                #oisst,
+                sstfill
+  ) %>%
+  na.omit() %>%
+  as.data.frame()
+
+
+nonzerofall <- herringlarvae_stn_fall |>
+  dplyr::filter(Catch_g > 0) #,
+                #Year > 1981)
+
+nonzerospring <- herringlarvae_stn_spring |>
+  dplyr::filter(Catch_g > 0) #,
+               # Year > 1981)
+
+Fall <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = nonzerofall, aes(x = Lon, y = Lat), colour = "blue", size=0.5, alpha=1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Fall herring larvae 1982-2022")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+
+Spring <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = nonzerospring, aes(x = Lon, y = Lat), colour = "blue", size=0.5, alpha=1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Spring herring larvae 1982-2022")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+ 
+Spring + Fall
+```
+
+Day of year and months herring larvae found (present, not abundance)
+
+```{r}
+
+herringlarvae_stn_all <- dplyr::bind_rows(herringlarvae_stn_spring, herringlarvae_stn_fall)
+
+hist(herringlarvae_stn_all$Dayofyear, xlim=c(0,365), breaks=366)
+
+hist(herringlarvae_stn_all$Month, xlim=c(0,12), breaks=13)
+
+```
+
+Amount of herring larvae found (sum station volume over all years, not an abundance)
+
+```{r}
+
+sumlarvae <- herringlarvae_stn_all |>
+  dplyr::group_by(Month) |>
+  dplyr::summarise(totlarvae = sum(Catch_g, na.rm = TRUE))
+
+ggplot2::ggplot(sumlarvae, ggplot2::aes(x=Month, y=totlarvae)) +
+  ggplot2::geom_bar(stat = "identity")
+```
+
+So fall larvae, could be used to weight fall small copepods. 
+
