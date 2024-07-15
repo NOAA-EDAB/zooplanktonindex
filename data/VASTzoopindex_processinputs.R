@@ -131,6 +131,7 @@ sumcopepods <- ecomonall |>
                 lgcopeSOE_10m2, lgcopeSOE_100m3) # dont really need just placeholder
   
 # add summed copepods, fix dates, establish seasons
+# also add herring larvae
 
 herringfood <- ecomonall |>
     dplyr::filter(!is.na(cruise_name)) |>
@@ -141,7 +142,8 @@ herringfood <- ecomonall |>
                   hyper_10m2, hyper_100m3, calfin_10m2, calfin_100m3,
                   smallcopeALL_10m2, smallcopeALL_100m3,
                   lgcopeALL_10m2, lgcopeALL_100m3,
-                  smallcopeSOE_10m2, smallcopeSOE_100m3) |>
+                  smallcopeSOE_10m2, smallcopeSOE_100m3,
+                  cluhar_10m2, cluhar_100m3) |>
     dplyr::mutate(date = lubridate::dmy(date),
                   year = lubridate::year(date),
                   month = lubridate::month(date),
@@ -282,7 +284,8 @@ stations <- herringfood_stn_all %>%
 
 
 # here can't go back a level so hardcode to get to forageindex folders
-d.name <- "/Users/sarahgaichas/Documents/Work/forageindex/data-raw/gridded/sst_data/"
+#d.name <- "/Users/sarahgaichas/Documents/Work/forageindex/data-raw/gridded/sst_data/"
+d.name <- "/Users/sarah.gaichas/Documents/0_Data/forageindex/data-raw/gridded/sst_data/"
 
 #list of SST dataframes
 #SSTdfs <- list.files(here("data-raw/gridded/sst_data/"), pattern = "*.rds")
