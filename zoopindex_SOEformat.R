@@ -30,12 +30,12 @@ SOEinputs <- function(infile, season, taxa, outfile) {
     left_join(stratlook) %>%
     dplyr::select(Time, 
                   EPU = Region, 
-                  "Biomass Index Estimate" = Estimate, 
-                  "Biomass Index Estimate SE" = Std..Error.for.Estimate) %>%
-    tidyr::pivot_longer(c("Biomass Index Estimate", "Biomass Index Estimate SE"), 
+                  "Abundance Index Estimate" = Estimate, 
+                  "Abundance Index Estimate SE" = Std..Error.for.Estimate) %>%
+    tidyr::pivot_longer(c("Abundance Index Estimate", "Abundance Index Estimate SE"), 
                         names_to = "Var", values_to = "Value") %>%
     dplyr::filter(EPU %in% c("her_sp", "her_fa", "GB", "GOM", "AllEPU")) %>%
-    dplyr::mutate(Units = "relative grams per stomach") %>%
+    dplyr::mutate(Units = "numbers per 100 cu m volume") %>%
     dplyr::select(Time, Var, Value, EPU, Units)
   
   zoopindex$Var <- stringr::str_c(season, taxa, zoopindex$Var, sep = " ")
@@ -67,22 +67,14 @@ SOEinputs(infile = "pyindex/smallcopeSOE_fall_500_biascorrect/Index.csv",
           outfile = "pyindex/fallsmcopepodSOEindex.rds")
 
 
-# test plot
-# foragewide <- forageindex %>%
-#   pivot_wider(names_from = Var, values_from = Value)
-# 
-# 
-# ggplot(foragewide, aes(x=Time, y=`Forage Fish Biomass Estimate`, colour = EPU)) +
-#   geom_errorbar(aes(ymin=`Forage Fish Biomass Estimate`+`Forage Fish Biomass Estimate SE`, 
-#                     ymax=`Forage Fish Biomass Estimate`-`Forage Fish Biomass Estimate SE`))+
-#   geom_point()+
-#   geom_line()
+# example plot
+springcalfinindex <- readRDS("~/Documents/0_Data/zooplanktonindex/pyindex/springcalfinindex.rds")
 
 calfinwide <- springcalfinindex |> tidyr::pivot_wider(names_from = Var, values_from = Value)
 
-ggplot2::ggplot(calfinwide, ggplot2::aes(x=Time, y=`Spring Calanus finmarchicus Biomass Index Estimate`, colour=EPU)) + 
-  ggplot2::geom_ribbon(ggplot2::aes(ymin=`Spring Calanus finmarchicus Biomass Index Estimate`-`Spring Calanus finmarchicus Biomass Index Estimate SE`, 
-                                    ymax=`Spring Calanus finmarchicus Biomass Index Estimate`+`Spring Calanus finmarchicus Biomass Index Estimate SE`,
+ggplot2::ggplot(calfinwide, ggplot2::aes(x=Time, y=`Spring Calanus finmarchicus Abundance Index Estimate`, colour=EPU)) + 
+  ggplot2::geom_ribbon(ggplot2::aes(ymin=`Spring Calanus finmarchicus Abundance Index Estimate`-`Spring Calanus finmarchicus Abundance Index Estimate SE`, 
+                                    ymax=`Spring Calanus finmarchicus Abundance Index Estimate`+`Spring Calanus finmarchicus Abundance Index Estimate SE`,
                                     fill=EPU),
                        alpha=0.5)+
   ggplot2::geom_point()+
