@@ -152,3 +152,14 @@ ggplot2::ggplot(sumlarvae, ggplot2::aes(x=Month, y=totlarvae)) +
 
 So fall larvae, could be used to weight fall small copepods. 
 
+What years? Also just summing stations, not an abundance estimate
+
+```{r}
+
+sumlarvaeyr <- herringlarvae_stn_all |>
+  dplyr::group_by(Year) |>
+  dplyr::summarise(totlarvae = sum(Catch_g, na.rm = TRUE))
+
+ggplot2::ggplot(sumlarvaeyr, ggplot2::aes(x=Year, y=totlarvae)) +
+  ggplot2::geom_bar(stat = "identity")
+```
