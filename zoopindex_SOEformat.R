@@ -34,7 +34,7 @@ SOEinputs <- function(infile, season, taxa, outfile) {
                   "Abundance Index Estimate SE" = Std..Error.for.Estimate) %>%
     tidyr::pivot_longer(c("Abundance Index Estimate", "Abundance Index Estimate SE"), 
                         names_to = "Var", values_to = "Value") %>%
-    dplyr::filter(EPU %in% c("her_sp", "her_fa", "GB", "GOM", "AllEPU")) %>%
+    dplyr::filter(EPU %in% c("her_sp", "her_fa", "MAB", "GB", "GOM", "AllEPU")) %>%
     dplyr::mutate(Units = "numbers per 100 cu m volume") %>%
     dplyr::select(Time, Var, Value, EPU, Units)
   
