@@ -26,7 +26,8 @@ calfin_stn_ann <- herringfood_stn %>%
     year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = calfin_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -37,7 +38,8 @@ calfin_stn_ann <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -49,7 +51,8 @@ calfin_stn_fall <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = calfin_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -60,7 +63,8 @@ calfin_stn_fall <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -71,7 +75,8 @@ calfin_stn_spring <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = calfin_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -82,7 +87,8 @@ calfin_stn_spring <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -97,7 +103,8 @@ lgcopeALL_stn_ann <- herringfood_stn %>%
     year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = lgcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -108,7 +115,8 @@ lgcopeALL_stn_ann <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -120,7 +128,8 @@ lgcopeALL_stn_fall <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = lgcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -131,7 +140,8 @@ lgcopeALL_stn_fall <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -142,7 +152,8 @@ lgcopeALL_stn_spring <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = lgcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -153,7 +164,8 @@ lgcopeALL_stn_spring <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -170,7 +182,8 @@ smallcopeALL_stn_ann <- herringfood_stn %>%
     year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -181,7 +194,8 @@ smallcopeALL_stn_ann <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -193,7 +207,8 @@ smallcopeALL_stn_fall <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -204,7 +219,8 @@ smallcopeALL_stn_fall <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -215,7 +231,8 @@ smallcopeALL_stn_spring <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -226,7 +243,8 @@ smallcopeALL_stn_spring <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -240,7 +258,8 @@ smallcopeSOE_stn_ann <- herringfood_stn %>%
     year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeSOE_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -251,7 +270,8 @@ smallcopeSOE_stn_ann <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -263,7 +283,8 @@ smallcopeSOE_stn_fall <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeSOE_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -274,7 +295,8 @@ smallcopeSOE_stn_fall <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -285,7 +307,8 @@ smallcopeSOE_stn_spring <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeSOE_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -296,7 +319,8 @@ smallcopeSOE_stn_spring <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -419,20 +443,20 @@ strata.limits <- as.list(c("AllEPU" = allEPU2,
 
 # list of data, settings, and directory for output for each option
 
-mod.season <- c("calfin_fall_500", "calfin_spring_500",
-                "lgcopeALL_fall_500", "lgcopeALL_spring_500",
-                "smallcopeALL_fall_500", "smallcopeALL_spring_500",
-                "smallcopeSOE_fall_500", "smallcopeSOE_spring_500") #includes n knots
+mod.season <- c("calfin_fall_500", "calfin_spring_500", "calfin_ann_500",
+                "lgcopeALL_fall_500", "lgcopeALL_spring_500", "lgcopeALL_ann_500",
+                "smallcopeALL_fall_500", "smallcopeALL_spring_500", "smallcopeALL_ann_500",
+                "smallcopeSOE_fall_500", "smallcopeSOE_spring_500", "smallcopeSOE_ann_500") #includes n knots
 
-mod.dat <- list(calfin_stn_fall, calfin_stn_spring,
-                lgcopeALL_stn_fall, lgcopeALL_stn_spring,
-                smallcopeALL_stn_fall, smallcopeALL_stn_spring,
-                smallcopeSOE_stn_fall, smallcopeSOE_stn_spring)
+mod.dat <- list(calfin_stn_fall, calfin_stn_spring, calfin_stn_ann,
+                lgcopeALL_stn_fall, lgcopeALL_stn_spring, lgcopeALL_stn_ann,
+                smallcopeALL_stn_fall, smallcopeALL_stn_spring, smallcopeALL_stn_ann,
+                smallcopeSOE_stn_fall, smallcopeSOE_stn_spring, smallcopeSOE_stn_ann)
 
 names(mod.dat) <- mod.season
 
-mod.obsmod <- list(ObsModel1, ObsModel1, ObsModel1, ObsModel1,
-                   ObsModel2, ObsModel2, ObsModel2, ObsModel2)
+mod.obsmod <- list(ObsModel1, ObsModel1, ObsModel1, ObsModel1, ObsModel1, ObsModel1,
+                   ObsModel2, ObsModel2, ObsModel2, ObsModel2, ObsModel2, ObsModel2)
 
 names(mod.obsmod) <- mod.season
 
@@ -446,7 +470,7 @@ for(season in mod.season){
   
   dat <- mod.dat[[season]]
   
-  for(config in c("biascorrect")) {
+  for(config in c("biascorrect_doy")) {
     
     name <- paste0(season,"_", config)
     
@@ -482,11 +506,12 @@ for(season in mod.season){
       b_i = as_units(dat[,'Catch_g'], 'g'),
       a_i = rep(1, nrow(dat)),
       v_i = dat$Vessel,
-      #Q_ik = as.matrix(dat[,c("npiscsp", 
+      Q_ik = as.matrix(dat[,c("Dayofyear" #"npiscsp", 
       #                                       "meanpisclen", 
       #                                       "sstfill"
-      #                                      )]),
+                                            )]),
       #Use_REML = TRUE,
+      test_fit = FALSE,
       working_dir = paste0(working_dir, "/"))
     )
     

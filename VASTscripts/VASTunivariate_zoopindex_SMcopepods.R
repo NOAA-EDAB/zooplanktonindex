@@ -29,7 +29,8 @@ smallcopeALL_stn_ann <- herringfood_stn %>%
     year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -40,7 +41,8 @@ smallcopeALL_stn_ann <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -52,7 +54,8 @@ smallcopeALL_stn_fall <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -63,7 +66,8 @@ smallcopeALL_stn_fall <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -74,7 +78,8 @@ smallcopeALL_stn_spring <- herringfood_stn %>%
          year > 1981) %>%
   mutate(AreaSwept_km2 = 1, #Elizabeth's code
          #declon = -declon already done before neamap merge
-         Vessel = 1 #as.numeric(as.factor(vessel))-1
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date) #as.numeric(as.factor(vessel))-1
   ) %>% 
   dplyr::select(Catch_g = smallcopeALL_100m3, #use megabenwt for individuals input in example
                 Year = year,
@@ -85,7 +90,8 @@ smallcopeALL_stn_spring <- herringfood_stn %>%
                 #btm_temp, #this leaves out many stations
                 #sfc_temp, #this leaves out many stations
                 #oisst,
-                sstfill
+                sstfill,
+                Dayofyear
   ) %>%
   na.omit() %>%
   as.data.frame()
@@ -232,7 +238,7 @@ for(season in mod.season){
   
   dat <- mod.dat[[season]]
   
-  for(config in c("biascorrect_noom1")) {
+  for(config in c("biascorrect_noom1_doy")) {
     
     name <- paste0(season,"_", config)
     
@@ -268,10 +274,10 @@ for(season in mod.season){
       b_i = as_units(dat[,'Catch_g'], 'g'),
       a_i = rep(1, nrow(dat)),
       v_i = dat$Vessel,
-      #Q_ik = as.matrix(dat[,c("npiscsp", 
+      Q_ik = as.matrix(dat[,c("Dayofyear"#, 
       #                                       "meanpisclen", 
       #                                       "sstfill"
-      #                                      )]),
+                                            )]),
       #Use_REML = TRUE,
       test_fit = FALSE,
       working_dir = paste0(working_dir, "/"))
