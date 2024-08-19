@@ -511,7 +511,7 @@ for(season in mod.season){
       #                                       "sstfill"
                                             )]),
       #Use_REML = TRUE,
-      test_fit = FALSE,
+      #test_fit = FALSE,
       working_dir = paste0(working_dir, "/"))
     )
     
