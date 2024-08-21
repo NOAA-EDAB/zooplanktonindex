@@ -33,6 +33,7 @@ These models are for the following copepod categories:
 *  Small copepods (SOE) (ctyp_100m3, pseudo_100m3, tlong_100m3, cham_100m3) = "smallcopeSOE".
 
 Actual species in each:
+
 *   Calanus finmarchicus, = Large copeopds SOE (used in small-large index) 
 
 *   Large copepods ALL:  Calanus finmarchicus,  Metridia lucens, Calanus minor,  Eucalanus spp.,  Calanus spp.
@@ -303,7 +304,7 @@ EPUs + Spring + Fall
 These are the same for all models
 
 ```{r, results = "asis"}
-for(d.name in moddirs[str_detect(moddirs, "calfin")]){
+for(d.name in moddirs[str_detect(moddirs, "calfin")][c(2,4)]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -486,7 +487,9 @@ for(d.name in moddirs[str_detect(moddirs, "calfin")]){
   modname <- modpath[length(modpath)]
   
   cat(modname, "\n")
-  cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  if(file.exists(paste0(d.name, "/ln_density-predicted.png"))){
+    cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  }
   cat("\n\n")
   
 }
@@ -511,7 +514,9 @@ for(d.name in moddirs[str_detect(moddirs, "lgcopeALL")]){
   modname <- modpath[length(modpath)]
   
   cat(modname, "\n")
-  cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  if(file.exists(paste0(d.name, "/ln_density-predicted.png"))){
+    cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  }
   cat("\n\n")
   
 }
@@ -551,7 +556,7 @@ for(d.name in moddirs[str_detect(moddirs, "smallcopeALL")]){
 plot_zooindices(splitoutput = splitoutput, 
              plotdata = "smallcopeSOE", 
              plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
-             plottitle = "Small copeopods (SOE subset") 
+             plottitle = "Small copeopods (SOE subset)") 
 ```
 
 ### Density estimates
@@ -563,7 +568,9 @@ for(d.name in moddirs[str_detect(moddirs, "smallcopeSOE")]){
   modname <- modpath[length(modpath)]
   
   cat(modname, "\n")
-  cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  if(file.exists(paste0(d.name, "/ln_density-predicted.png"))){
+    cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  }
   cat("\n\n")
   
 }
