@@ -659,3 +659,29 @@ plot_indices_comp(splitoutput = fallonly,
              plottitle = "Small copepods (All)",
              comptype = "scale")
 ```
+
+### Spring large copepod models
+
+The Day of Year covariate model did converge in spring for large copepods.
+
+```{r, fig.height=12}
+
+fallonly <- splitoutput |> dplyr::filter(Season=="spring")
+
+plot_indices_comp(splitoutput = fallonly, 
+             plotdata = "lgcopeALL", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Large copepods (All)",
+             comptype = "trend")
+```
+
+```{r, fig.height=12}
+
+fallonly <- splitoutput |> dplyr::filter(Season=="spring")
+
+plot_indices_comp(splitoutput = fallonly, 
+             plotdata = "lgcopeALL", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Large copepods (All)",
+             comptype = "scale")
+```
