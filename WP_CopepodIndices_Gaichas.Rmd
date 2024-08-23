@@ -1,0 +1,42 @@
+---
+title: 'Working Paper: Copepod Indices'
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_fold: hide
+link-citations: yes
+csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
+bibliography: zoopindex.bib
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+The Atlantic herring research track working group (WG) is interested in exploring impacts of food availability on herring stock dynamics. Indices of zooplankton abundance were proposed for exploration. 
+
+These indices could potentially explain:
+
+1.  herring recruitment 
+1.  herring growth/condition 
+1.  patterns in herring "survival" random effects  
+
+The WG decided to focus on patterns in recruitment, as low recruitment in recent years is an important issue for the stock and for fishery management.
+
+The WG used a boosted regression tree analysis (Molina 2024) to identify zooplankton indices that best explained patterns in herring recruitment.  These indices included large copepods in spring (influencing growth of herring postlarvae and juveniles), and small copeopods in fall (influencing survival of herring larvae over the winter).
+
+In this working paper, we develop indices of large copepods in spring and small copepods in fall using zooplankton survey data (citation) from 1982-2022. We tailor the indices to the spatial footprint of the Atlantic herring stock assessment, and further use information on the changing spatial distribution of herring larvae over time from the same dataset to evaluate potential changes in availability of small copepods to herring larvae. 
+
+
+# Methods
+
+# Results
+
+# Discussion
+
+# References
+
