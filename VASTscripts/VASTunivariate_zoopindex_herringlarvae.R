@@ -213,7 +213,7 @@ for(season in mod.season){
   
   dat <- mod.dat[[season]]
   
-  for(config in c("test")) {
+  for(config in c("biascorrect")) {
     
     name <- paste0(season,"_", config)
     
@@ -232,7 +232,7 @@ for(season in mod.season){
                                strata.limits = strata.limits,
                                purpose = "index2", 
                                ObsModel = ObsModel,
-                               bias.correct = FALSE,
+                               bias.correct = TRUE,
                                use_anisotropy = use_anisotropy,
                                FieldConfig = FieldConfig,
                                RhoConfig = RhoConfig, #always default
