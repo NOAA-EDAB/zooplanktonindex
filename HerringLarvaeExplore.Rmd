@@ -324,7 +324,7 @@ modselect <- modcompare |>
 
 ### Stations by season
 
-These are the same for all models
+Fall sampling for herring larvae was completed in most years aside from GLOBEC. In our definition of spring, herring larvae primarily ocurr in January and February.
 
 ```{r, results = "asis"}
 for(d.name in moddirs[str_detect(moddirs, "herring")]){
@@ -498,6 +498,56 @@ plot_zooindices(splitoutput = splitoutput,
              plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
              plottitle = "Herring larvae") 
 ```
+
+Relative density by area
+
+```{r}
+
+plotdata <- c("herringlarvae")
+plottitle  <-  "Herring larvae"
+
+  fix<- splitoutput |>
+    dplyr::filter(Data %in% plotdata #, 
+                  #Region %in% filterEPUs
+                  ) |>
+    dplyr::group_by(Season) |> #Region,
+    dplyr::summarise(max = max(Estimate, na.rm=T))
+  
+  p <- splitoutput |>
+    dplyr::filter(Data %in% plotdata #, #c("calfin"),
+                  #Region %in% filterEPUs
+                  ) |>
+    dplyr::group_by(Season) |> #Region, 
+    dplyr::left_join(fix) |>
+    dplyr::mutate(#Value = Value/resca,
+      Mean = as.numeric(Estimate),
+      SE = Std..Error.for.Estimate,
+      Mean = Mean/max,
+      SE = SE/max,
+      Upper = Mean + SE,
+      Lower = Mean - SE) |>
+    ggplot2::ggplot(ggplot2::aes(x = Time, y = Mean, linetype = Region, group = Region))+
+    #ggplot2::annotate("rect", fill = setup$shade.fill, alpha = setup$shade.alpha,
+    #                  xmin = setup$x.shade.min , xmax = setup$x.shade.max,
+    #                  ymin = -Inf, ymax = Inf) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = Lower, ymax = Upper, fill = Region), alpha = 0.5)+
+    ggplot2::geom_point()+
+    ggplot2::geom_line()+
+    ggplot2::ggtitle(plottitle)+
+    ggplot2::ylab(expression("Relative abundance"))+
+    ggplot2::xlab(ggplot2::element_blank())+
+    ggplot2::facet_wrap(~Season, #Region~ ncol = ncols, 
+                        labeller = label_wrap_gen(multi_line=FALSE))+
+    #ecodata::geom_gls()+
+    ecodata::theme_ts()+
+    ecodata::theme_facet()+
+    ecodata::theme_title() +
+    ggplot2::theme(legend.position = "bottom")
+  
+ p
+
+```
+
 
 ### Density estimates
 
