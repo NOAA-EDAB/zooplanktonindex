@@ -566,6 +566,70 @@ for(d.name in moddirs[str_detect(moddirs, "herring")]){
 }
 ```
 
+## Extract the herring larvae data by year
+
+We want to define areas of most dense larvae each year and pull our small copepod index from there.
+
+Maybe quantiles of herring larval density by year?
+
+Get the data (based on https://github.com/James-Thorson-NOAA/VAST/wiki/Plots-using-ggplot):
+
+```{r}
+
+d.name <- moddirs[str_detect(moddirs, "herringlarvae_fall")]
+fit <- readRDS(paste0(d.name, "/fit.rds"))
+years <- unique(unique(fit$data_frame$t_i))
+
+mdl <- make_map_info(Region = fit$settings$Region,
+                     spatial_list = fit$spatial_list,
+                     Extrapolation_List = fit$extrapolation_list)
+
+gmap <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  aes(x = long, y = lat, group = group) +
+  geom_polygon(fill="black", colour = "white") +
+  scale_color_viridis_c(option = "magma") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.spacing.x=unit(0, "lines"),
+        panel.spacing.y=unit(0, "lines"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank() ) +
+  coord_cartesian(xlim=mdl$Xlim, ylim=mdl$Ylim)
+
+## Below shows to you get the model estimate of density, D_gct,
+## for each grid (g), category (c; not used here single
+## univariate); and year (t); and link it spatially to a lat/lon
+## extrapolation point.  You can do this for any _gct or _gc
+## variable in the Report.
+names(fit$Report)[grepl('_gc|_gct', x=names(fit$Report))]
+
+D_gt <- fit$Report$D_gct[,1,] # drop the category
+dimnames(D_gt) <- list(cell=1:nrow(D_gt), year=years)
+## tidy way of doing this, reshape2::melt() does
+## it cleanly but is deprecated
+D_gt <- D_gt %>% as.data.frame() %>%
+    tibble::rownames_to_column(var = "cell") %>%
+    pivot_longer(-cell, names_to = "Year", values_to='D')
+D <- merge(D_gt, mdl$PlotDF, by.x='cell', by.y='x2i')
+g <- gmap +
+  geom_point(data=D, aes(Lon, Lat, color=log(as.vector(D)), group=NULL),
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=.3, stroke=0,shape=16) + facet_wrap('Year')
+g
+
+```
+
+
+
+
+
 ## Compare with fall small copepod models
 
 ### Fall small copepod trends
