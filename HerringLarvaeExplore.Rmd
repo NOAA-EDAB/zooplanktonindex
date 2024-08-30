@@ -572,23 +572,24 @@ We want to define areas of most dense larvae each year and pull our small copepo
 
 Maybe quantiles of herring larval density by year?
 
-Get the data (based on https://github.com/James-Thorson-NOAA/VAST/wiki/Plots-using-ggplot):
+Plot the data (based on https://github.com/James-Thorson-NOAA/VAST/wiki/Plots-using-ggplot):
 
-```{r}
+```{r, fig.height=12}
 
 d.name <- moddirs[str_detect(moddirs, "herringlarvae_fall")]
 fit <- readRDS(paste0(d.name, "/fit.rds"))
-years <- unique(unique(fit$data_frame$t_i))
+years <- unique(herringlarvae_stn_fall$Year) #unique(fit$data_frame$t_i)
+years <- c(min(years):max(years))
 
-mdl <- make_map_info(Region = fit$settings$Region,
+mdl <- FishStatsUtils::make_map_info(Region = fit$settings$Region,
                      spatial_list = fit$spatial_list,
                      Extrapolation_List = fit$extrapolation_list)
 
 gmap <- ggplot(data = ecodata::coast) +
   geom_sf() + 
-  aes(x = long, y = lat, group = group) +
-  geom_polygon(fill="black", colour = "white") +
-  scale_color_viridis_c(option = "magma") +
+  #aes(x = lon, y = lat, group = group) +
+  #geom_polygon(fill="black", colour = "white") +
+  scale_color_viridis_c(option = "magma") +  # now make this quantiles...
   theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -599,7 +600,7 @@ gmap <- ggplot(data = ecodata::coast) +
         panel.spacing.y=unit(0, "lines"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank() ) +
-  coord_cartesian(xlim=mdl$Xlim, ylim=mdl$Ylim)
+  coord_sf(xlim=mdl$Xlim, ylim=mdl$Ylim)
 
 ## Below shows to you get the model estimate of density, D_gct,
 ## for each grid (g), category (c; not used here single
