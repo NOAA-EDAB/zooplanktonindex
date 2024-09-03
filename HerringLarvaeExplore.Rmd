@@ -633,6 +633,21 @@ g
 
 ## Compare with fall small copepod models
 
+Overview of small copepod model indices (no covariates), including the herring larval season model (Sep-Feb).
+
+```{r, fig.height=12}
+
+splitnocov <- splitoutput |> dplyr::filter(!str_detect(modname, "_doy"))
+
+plot_zooindices(splitoutput = splitnocov, 
+             plotdata = "smallcopeALL", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Small copepods") 
+
+```
+
+
+
 ### Fall small copepod trends
 
 Do we get the same trend from the day of year covariate models and those without covariates? Scale is different. 
