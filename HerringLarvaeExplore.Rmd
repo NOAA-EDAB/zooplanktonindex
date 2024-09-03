@@ -576,9 +576,9 @@ Plot the data (based on https://github.com/James-Thorson-NOAA/VAST/wiki/Plots-us
 
 ```{r, fig.height=12}
 
-d.name <- moddirs[str_detect(moddirs, "herringlarvae_fall")]
+d.name <- moddirs[str_detect(moddirs, "herringlarvae_sepfeb")]
 fit <- readRDS(paste0(d.name, "/fit.rds"))
-years <- unique(herringlarvae_stn_fall$Year) #unique(fit$data_frame$t_i)
+years <- unique(fit$data_frame$t_i)
 years <- c(min(years):max(years))
 
 mdl <- FishStatsUtils::make_map_info(Region = fit$settings$Region,
@@ -623,7 +623,7 @@ g <- gmap +
              ## overlplotting which is a problem here. May need
              ## to be tweaked further.
              size=.3, stroke=0,shape=16) + facet_wrap('Year')
-g
+#g
 
 ```
 
