@@ -21,6 +21,8 @@ library(here)
 library(DT)
 library(ggiraph)
 library(patchwork)
+library(VAST)
+library(FishStatsUtils)
 ```
 
 # Introduction
@@ -574,16 +576,22 @@ Maybe quantiles of herring larval density by year?
 
 Plot the data (based on https://github.com/James-Thorson-NOAA/VAST/wiki/Plots-using-ggplot):
 
+Two low years and two high years
+
 ```{r, fig.height=12}
 
 d.name <- moddirs[str_detect(moddirs, "herringlarvae_sepfeb")]
 fit <- readRDS(paste0(d.name, "/fit.rds"))
+fit <- VAST::reload_model(fit) #added to try to make work after restart, no previous VAST run
 years <- unique(fit$data_frame$t_i)
 years <- c(min(years):max(years))
 
 mdl <- FishStatsUtils::make_map_info(Region = fit$settings$Region,
                      spatial_list = fit$spatial_list,
-                     Extrapolation_List = fit$extrapolation_list)
+                     Extrapolation_List = fit$extrapolation_list#,
+                     #added to try to make work after restart, no previous VAST run
+                     #Include = fit$extrapolation_list[["Area_km2_x"]] > 0 &  rowSums(fit$extrapolation_list[["a_el"]]) >  0
+                     )
 
 gmap <- ggplot(data = ecodata::coast) +
   geom_sf() + 
@@ -625,8 +633,27 @@ g <- gmap +
              size=.3, stroke=0,shape=16) + facet_wrap('Year')
 #g
 
+
+highyears <- c(1992, 2000)
+lowyears <- c(1983, 2019)
+
+Dsub <- D |> dplyr::filter(Year %in% c(lowyears, highyears))
+
+g <- gmap +
+  geom_point(data=Dsub, aes(Lon, Lat, color=log(as.vector(D)), group=NULL),
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=.3, stroke=0,shape=16) + facet_wrap('Year')
+
+g
 ```
 
+Calculate quantiles?
+
+```{r}
+
+```
 
 
 
