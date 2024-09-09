@@ -695,9 +695,9 @@ g
 
 ```
 
-Calculate quantiles of distribution across the time series. First sum all cells over time.
+Calculate quantiles of distribution across the time series. First sum all cells over time, then these are the quantiles of summed log density:
 
-```{r}
+```{r, fig.width=10}
 
 # one option, sum D_gct over all years then take quantiles in space
 
@@ -713,32 +713,128 @@ Dvec <- terra::vect(Dtot, geom=c("Lon", "Lat"))
 q <- quantile(log(as.vector(Dtot$Dsum)), probs=seq(0,1,0.1))
 q2 <- quantile(Dtot$logD, probs=seq(0,1,0.1))
 
-qvec <- terra::quantile(Dvec, probs=c(0.7, 0.75, 0.8))
+qvec <- terra::quantile(Dvec, probs=c(0.6, 0.65, 0.7, 0.75, 0.8))
 
 quants <- classInt::classIntervals(log(as.vector(Dtot$Dsum)), 
                                    style = "quantile", n = 10)
 
-quants$brks
+#quants$brks
 
 
+D60pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["60%","logD"]) |>
+  dplyr::rename("60th" = "Include")
+
+D65pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["65%","logD"]) |>
+  dplyr::rename("65th" = "Include")
+
+D70pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["70%","logD"]) |>
+  dplyr::rename("70th" = "Include")
+
+D75pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["75%","logD"]) |>
+  dplyr::rename("75th" = "Include")
+
+D80pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["80%","logD"]) |>
+  dplyr::rename("80th" = "Include")
+
+qvec
+
+```
+
+
+Mapping the summed density below.
+
+```{r}
 g <- gmap +
   geom_point(data=Dtot, aes(Lon, Lat, color=log(as.vector(Dsum)), group=NULL)
+             ,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             ) 
+
+g
+```
+
+
+Mapping the quantiles from 60% (white) to 80% (light blue).
+
+Quantiles below 70% include densities south of Long Island and off Cape Hatteras. The WG thinks the larvae found to the south may be lost to the population so we likely don't want to use a quantile below the 70th percentile.
+
+The 80th percentile starts to show a gap on Georges Bank and along the southwest coast of Maine. This may be slicing things too finely to cover general herring larval habitat. 
+
+I think this leaves us with using either the 70th (light green) or 75th (dark green) percentile of summed density over all years to define herring larvae relevant habitat for the small copepods index.
+
+```{r}
+ 
+gq <- gmap +
+ geom_point(data=D60pct, 
+             aes(x=Lon, y=Lat, color = "60th"), 
+            # color="white"
+            #)
+            # ,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  geom_point(data=D65pct, 
+             aes(x=Lon, y=Lat, color = "65th"), 
+             #color="yellow"
+             #)
              #,
              ## These settings are necessary to avoid
              ## overlplotting which is a problem here. May need
              ## to be tweaked further.
-             #size=1.5, stroke=0,shape=16
-             ) +
-  #geom_
-  geom_density_2d(data=Dtot |> dplyr::filter(log(as.vector(Dsum))>5.5), 
-                  #alpha = 0.8, 
-                  #n=1000,
-                  #contour=TRUE,
-                  #contour_var="density",
-                  aes(x=Lon, y=Lat )) 
-
-
-g
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  geom_point(data=D70pct, 
+             aes(x=Lon, y=Lat, color = "70th"), 
+             #color="green"
+             #)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  geom_point(data=D75pct, 
+             aes(x=Lon, y=Lat, color = "75th"), 
+             #color="darkgreen"
+              #)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+   geom_point(data=D80pct, 
+             aes(x=Lon, y=Lat, color = "80th"), 
+             #color="lightblue"
+             #)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  ggplot2::scale_color_manual(name = "Quantile",
+                        breaks = c("60th", "65th", "70th", "75th", "80th"),
+                        values = c("60th" = "white", "65th" = "yellow", 
+                                   "70th" = "green", "75th" = "darkgreen", 
+                                   "80th" = "lightblue") )
+  
+gq
 
 
 # another option, pull from fit$report Omega 1 and 2?
