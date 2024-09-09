@@ -37,14 +37,15 @@ Herring larvae data were added to the input dataset in the updated script https:
 
 Where are herring larvae in each of our seasons?
 
-```{r}
+```{r, fig.width=10}
 
 herringfood_stn <- readRDS(here::here("data/herringfood_stn_all_OISST.rds"))
 
 # make SST column that uses surftemp unless missing or 0
 
 herringfood_stn <- herringfood_stn %>%
-  dplyr::mutate(sstfill = ifelse((is.na(sfc_temp)|sfc_temp==0), oisst, sfc_temp))
+  dplyr::mutate(sstfill = ifelse((is.na(sfc_temp)|sfc_temp==0), oisst, sfc_temp),
+                season_larv = month %in% c(1:2, 9:12))
 
 herringlarvae_stn_fall <- herringfood_stn %>%
   #ungroup() %>%
@@ -70,6 +71,33 @@ herringlarvae_stn_fall <- herringfood_stn %>%
   ) %>%
   na.omit() %>%
   as.data.frame()
+
+herringlarvae_stn_sepfeb <- herringfood_stn %>%
+  #ungroup() %>%
+  dplyr::filter(season_larv == TRUE) %>%
+  dplyr::mutate(AreaSwept_km2 = 1, #Elizabeth's code
+         #declon = -declon already done before neamap merge
+         Vessel = 1,
+         Dayofyear = lubridate::yday(date),
+         yearshift = ifelse(month < 3, year-1, year)#as.numeric(as.factor(vessel))-1
+  ) %>% 
+  dplyr::filter(yearshift>1981) |>
+  dplyr::select(Catch_g = cluhar_100m3, #use megabenwt for individuals input in example
+                Year = yearshift,
+                Month = month,
+                Dayofyear,
+                Vessel,
+                AreaSwept_km2,
+                Lat = lat,
+                Lon = lon,
+                #btm_temp, #this leaves out many stations
+                #sfc_temp, #this leaves out many stations
+                #oisst,
+                sstfill
+  ) %>%
+  na.omit() %>%
+  as.data.frame()
+
 
 herringlarvae_stn_spring <- herringfood_stn %>%
   #ungroup() %>%
@@ -101,6 +129,9 @@ nonzerofall <- herringlarvae_stn_fall |>
   dplyr::filter(Catch_g > 0) #,
                 #Year > 1981)
 
+nonzerosepfeb <- herringlarvae_stn_sepfeb |>
+  dplyr::filter(Catch_g > 0)
+
 nonzerospring <- herringlarvae_stn_spring |>
   dplyr::filter(Catch_g > 0) #,
                # Year > 1981)
@@ -115,6 +146,16 @@ Fall <- ggplot(data = ecodata::coast) +
   ggtitle("Fall herring larvae 1982-2022")+
   theme(plot.margin = margin(0, 0, 0, 0, "cm"))
 
+SepFeb <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
+  geom_point(data = nonzerosepfeb, aes(x = Lon, y = Lat), colour = "blue", size=0.5, alpha=1) +
+  coord_sf(xlim =c(-78.5, -65.5), ylim = c(33, 45)) + #zoomed to Hatteras and N
+  xlab("") +
+  ylab("") +
+  ggtitle("Sept-Feb herring larvae 1982-2022")+
+  theme(plot.margin = margin(0, 0, 0, 0, "cm"))
+
 Spring <- ggplot(data = ecodata::coast) +
   geom_sf() + 
   geom_point(data = FishStatsUtils::northwest_atlantic_grid, aes(x = Lon, y = Lat),  colour = "coral4", size=0.05, alpha=0.1) +
@@ -125,7 +166,7 @@ Spring <- ggplot(data = ecodata::coast) +
   ggtitle("Spring herring larvae 1982-2022")+
   theme(plot.margin = margin(0, 0, 0, 0, "cm"))
  
-Spring + Fall
+Spring + Fall + SepFeb
 ```
 
 Day of year and months herring larvae found (present, not abundance)
@@ -166,7 +207,7 @@ ggplot2::ggplot(sumlarvaeyr, ggplot2::aes(x=Year, y=totlarvae)) +
   ggplot2::geom_bar(stat = "identity")
 ```
 
-## Initial herring larvae model results: fall only
+## Initial herring larvae model results
 
 ```{r}
 # from each output folder in pyindex, 
@@ -326,7 +367,7 @@ modselect <- modcompare |>
 
 ### Stations by season
 
-Fall sampling for herring larvae was completed in most years aside from GLOBEC. In our definition of spring, herring larvae primarily ocurr in January and February.
+Fall sampling for herring larvae was completed in most years aside from GLOBEC. In our definition of spring, herring larvae primarily occur in January and February. We now include a shifted season to better match larval herring availability throughout the time series: September - February. Year corresponds to September-December, and the following January and February are aligned with the previous year (hatch year) in these analyses. 
 
 ```{r, results = "asis"}
 for(d.name in moddirs[str_detect(moddirs, "herring")]){
@@ -501,7 +542,9 @@ plot_zooindices(splitoutput = splitoutput,
              plottitle = "Herring larvae") 
 ```
 
-Relative density by area
+Relative density by area.
+
+We now see the spike in 2000 that was observed by @richardson_development_2010. 
 
 ```{r}
 
@@ -576,13 +619,13 @@ Maybe quantiles of herring larval density by year?
 
 Plot the data (based on https://github.com/James-Thorson-NOAA/VAST/wiki/Plots-using-ggplot):
 
-Two low years and two high years
+Two low years and two high years. Is distribution different?
 
 ```{r, fig.height=12}
 
 d.name <- moddirs[str_detect(moddirs, "herringlarvae_sepfeb")]
 fit <- readRDS(paste0(d.name, "/fit.rds"))
-fit <- VAST::reload_model(fit) #added to try to make work after restart, no previous VAST run
+#fit <- VAST::reload_model(fit) #added to try to make work after restart, no previous VAST run
 years <- unique(fit$data_frame$t_i)
 years <- c(min(years):max(years))
 
@@ -640,18 +683,65 @@ lowyears <- c(1983, 2019)
 Dsub <- D |> dplyr::filter(Year %in% c(lowyears, highyears))
 
 g <- gmap +
-  geom_point(data=Dsub, aes(Lon, Lat, color=log(as.vector(D)), group=NULL),
+  geom_point(data=Dsub, aes(Lon, Lat, color=log(as.vector(D)), group=NULL)
+             #,
              ## These settings are necessary to avoid
              ## overlplotting which is a problem here. May need
              ## to be tweaked further.
-             size=.3, stroke=0,shape=16) + facet_wrap('Year')
+             #size=.3, stroke=0,shape=16
+             ) + facet_wrap('Year')
 
 g
+
 ```
 
-Calculate quantiles?
+Calculate quantiles of distribution across the time series. First sum all cells over time.
 
 ```{r}
+
+# one option, sum D_gct over all years then take quantiles in space
+
+Dtot <- D |> 
+  dplyr::group_by(cell) |>
+  dplyr::mutate(Dsum = sum(D, na.rm=TRUE),
+                logD = log(as.vector(Dsum))) |>
+  dplyr::select(!c(D, Year)) |>
+  dplyr::distinct()
+
+Dvec <- terra::vect(Dtot, geom=c("Lon", "Lat"))
+
+q <- quantile(log(as.vector(Dtot$Dsum)), probs=seq(0,1,0.1))
+q2 <- quantile(Dtot$logD, probs=seq(0,1,0.1))
+
+qvec <- terra::quantile(Dvec, probs=c(0.7, 0.75, 0.8))
+
+quants <- classInt::classIntervals(log(as.vector(Dtot$Dsum)), 
+                                   style = "quantile", n = 10)
+
+quants$brks
+
+
+g <- gmap +
+  geom_point(data=Dtot, aes(Lon, Lat, color=log(as.vector(Dsum)), group=NULL)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             #size=1.5, stroke=0,shape=16
+             ) +
+  #geom_
+  geom_density_2d(data=Dtot |> dplyr::filter(log(as.vector(Dsum))>5.5), 
+                  #alpha = 0.8, 
+                  #n=1000,
+                  #contour=TRUE,
+                  #contour_var="density",
+                  aes(x=Lon, y=Lat )) 
+
+
+g
+
+
+# another option, pull from fit$report Omega 1 and 2?
 
 ```
 
