@@ -1118,188 +1118,22 @@ saveRDS(Extrapolation_List, file = here("spatialdat/CustomExtrapolationList.rds"
 
 ```
 
-
-## Compare with fall small copepod models
-
-Overview of small copepod model indices (no covariates), including the herring larval season model (Sep-Feb).
-
-```{r, fig.height=12}
-
-splitnocov <- splitoutput |> dplyr::filter(!str_detect(modname, "_doy"))
-
-plot_zooindices(splitoutput = splitnocov, 
-             plotdata = "smallcopeALL", 
-             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
-             plottitle = "Small copepods") 
-
-```
-
-
-
-### Fall small copepod trends
-
-Do we get the same trend from the day of year covariate models and those without covariates? Scale is different. 
+Did it work? Plot
 
 ```{r}
-plot_indices_comp <- function(splitoutput, 
-                                 plotdata, 
-                                 plotregions, 
-                                 plottitle,
-                                 comptype){
-  
-  filterEPUs <- plotregions #c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU")
-  
-  seasons <- splitoutput |> dplyr::filter(Data==plotdata) |> dplyr::select(Season) |> dplyr::distinct()
-  
-  ncols <- dim(seasons)[1]
-  
-  currentMonth <- lubridate::month(Sys.Date())
-  currentYear <- lubridate::year(Sys.Date())
-  if (currentMonth > 4) {
-    endShade <- currentYear
-  } else {
-    endShade <- currentYear - 1
-  }
-  shadedRegion <- c(endShade-9,endShade)
-  
-  shade.alpha <- 0.3
-  shade.fill <- "lightgrey"
-  lwd <- 1
-  pcex <- 2
-  trend.alpha <- 0.5
-  trend.size <- 2
-  hline.size <- 1
-  line.size <- 2
-  hline.alpha <- 0.35
-  hline.lty <- "dashed"
-  label.size <- 5
-  hjust.label <- 1.5
-  letter_size <- 4
-  errorbar.width <- 0.25
-  x.shade.min <- shadedRegion[1]
-  x.shade.max <- shadedRegion[2]
-  
-  setup <- list(
-    shade.alpha = shade.alpha,
-    shade.fill =shade.fill,
-    lwd = lwd,
-    pcex = pcex,
-    trend.alpha = trend.alpha,
-    trend.size = trend.size,
-    line.size = line.size,
-    hline.size = hline.size,
-    hline.alpha = hline.alpha,
-    hline.lty = hline.lty,
-    errorbar.width = errorbar.width,
-    label.size = label.size,
-    hjust.label = hjust.label,
-    letter_size = letter_size,
-    x.shade.min = x.shade.min,
-    x.shade.max = x.shade.max
-  )
-  
-  if(comptype=="trend"){
-    
-    tsmean <- splitoutput |>
-      dplyr::filter(Data %in% plotdata,
-                  Region %in% filterEPUs) |>
-      dplyr::group_by(modname, Region) |>
-      dplyr::mutate(fmean = mean(Estimate, na.rm=TRUE))
-    
-    p <-ggplot(tsmean, aes(x=Time, y=((Estimate-fmean)/fmean), colour=modname)) +
-      #geom_errorbar(aes(ymin=(Estimate+Std..Error.for.Estimate - fmean)/fmean,
-      #                  ymax=(Estimate-Std..Error.for.Estimate - fmean)/fmean))+
-      geom_point(aes(shape=modname))+
-      geom_line()+
-      #acet_wrap(~fct_relevel(Type, "Ecoregion", "Bluefish"), scales = "free_y") +
-      facet_wrap(~Region, scales = "free_y", ncol = 1) +
-      #scale_y_continuous(labels=function(x)round(x/foragemax, digits = 2))+
-      ylab("Relative index scaled to time series mean")  +
-      ggtitle(paste(plottitle, "Trend comparison")) +
-      theme(#legend.position = c(1, 0),
-        #legend.justification = c(1, 0),
-        legend.position = "bottom",
-        legend.text = element_text(size=rel(0.5)),
-        legend.key.size = unit(0.5, 'lines'),
-        legend.title = element_text(size=rel(0.5)))
-  }
-    
-  if(comptype=="scale"){
-    
-    scalecomp <- splitoutput |>
-      dplyr::filter(Data %in% plotdata,
-                    Region %in% filterEPUs) 
-    
-    indexmax <-  max(scalecomp$Estimate, na.rm=TRUE)
-    
-    p <-ggplot(scalecomp, aes(x=Time, y=Estimate, colour=modname)) +
-      #geom_errorbar(aes(ymin=Estimate+Std..Error.for.Estimate, ymax=Estimate-Std..Error.for.Estimate))+
-      geom_ribbon(aes(ymin=Estimate+Std..Error.for.Estimate, ymax=Estimate-Std..Error.for.Estimate, fill=modname), linetype = 0, alpha = 0.15)+
-      geom_point(aes(shape=modname))+
-      geom_line()+
-      #acet_wrap(~fct_relevel(Type, "Ecoregion", "Bluefish"), scales = "free_y") +
-      facet_wrap(~Region, scales = "free_y", ncol = 1) +
-      scale_y_continuous(labels=function(x)round(x/indexmax, digits = 2))+
-      ylab("Relative index scaled to maximum")  +
-      ggtitle(paste(plottitle, "Scale comparison"))+
-      theme(#legend.position = c(1, 0),
-        #legend.justification = c(1, 0),
-        legend.position = "bottom",
-        legend.text = element_text(size=rel(0.5)),
-        legend.key.size = unit(0.5, 'lines'),
-        legend.title = element_text(size=rel(0.5)))
-    
-  }  
-  
-  return(p)
-}
+
+newstrat <- readRDS(here("spatialdat/D70pct_nwa_strat2.rds"))
+
+herrlarv_area <- newstrat |>
+  dplyr::filter(stratum_number2 %% 10 == 1)
+
+ggplot2::ggplot(data = ecodata::coast) +
+  ggplot2::geom_sf() + 
+  ggplot2::geom_point(data = FishStatsUtils::northwest_atlantic_grid, ggplot2::aes(x = Lon, y = Lat), size=0.05, colour = "brown", alpha=0.1) +
+  ggplot2::geom_point(data = herrlarv_area, ggplot2::aes(x = Lon, y = Lat), size=0.05, colour = "green",  alpha=0.5) +
+  ggplot2::coord_sf(xlim = c(-78, -65.5), ylim = c(35, 45))+
+  ggplot2::ggtitle("Herring larvae area: northwest_atlantic_grid")
 
 ```
 
-```{r, fig.height=12}
 
-fallonly <- splitoutput |> dplyr::filter(Season=="fall")
-
-plot_indices_comp(splitoutput = fallonly, 
-             plotdata = "smallcopeALL", 
-             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
-             plottitle = "Small copepods (All)",
-             comptype = "trend")
-```
-
-```{r, fig.height=12}
-
-fallonly <- splitoutput |> dplyr::filter(Season=="fall")
-
-plot_indices_comp(splitoutput = fallonly, 
-             plotdata = "smallcopeALL", 
-             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
-             plottitle = "Small copepods (All)",
-             comptype = "scale")
-```
-
-### Spring large copepod models
-
-The Day of Year covariate model did converge in spring for large copepods.
-
-```{r, fig.height=12}
-
-fallonly <- splitoutput |> dplyr::filter(Season=="spring")
-
-plot_indices_comp(splitoutput = fallonly, 
-             plotdata = "lgcopeALL", 
-             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
-             plottitle = "Large copepods (All)",
-             comptype = "trend")
-```
-
-```{r, fig.height=12}
-
-fallonly <- splitoutput |> dplyr::filter(Season=="spring")
-
-plot_indices_comp(splitoutput = fallonly, 
-             plotdata = "lgcopeALL", 
-             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
-             plottitle = "Large copepods (All)",
-             comptype = "scale")
-```
