@@ -842,6 +842,38 @@ gq
 ```
 
 
+## Make a new extrapolation grid using herring larvae density 70th percentile
+
+These methods are similar to those used in the bluefish RTA for the forage index nearshore strata 3 miles from shore.
+
+First make the 70th percentile+ points into an `sf` object, then intersect that object with the built in `FishStatsUtils::northwest_atlantic_grid`, then define new strata based on that intersection, and call them as strata.limits when running the small copepods model.
+
+```{r}
+
+# dataframe to sf object
+D70pct_sf <- sf::st_as_sf(D70pct, coords = c("Lon", "Lat")) 
+  
+
+D70pct_poly <- D70pct_sf |>
+  sf::st_union() #|>
+  #dplyr::summarize(geometry = sf::st_union(geometry)) |>
+  #sf::st_convex_hull() #|>
+  #sf::st_cast("POLYGON")   
+  #sf::st_buffer(dist = 1)
+
+D70pct_ls <- sf::st_simplify(D70pct_sf |> 
+                           summarise()  |> 
+                           sf::st_concave_hull(ratio=0.1) |>
+                           sf::st_cast(to ="LINESTRING")) 
+
+
+
+  st_as_sfc() |>
+  ggplot(data=.)+geom_sf()
+
+```
+
+
 
 
 ## Compare with fall small copepod models
