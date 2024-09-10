@@ -858,23 +858,64 @@ First make the 70th percentile+ points into an `sf` object, then intersect that 
 # dataframe to sf object
 D70pct_sf <- sf::st_as_sf(D70pct, coords = c("Lon", "Lat")) 
   
+# concave hull in newest sf only works with GEOS>3.11
+D70pct_ls <- D70pct_sf |>
+  sf::st_union() |>
+  sf::st_concave_hull(ratio=0.1) |>
+  sf::st_cast(to ="LINESTRING") |>
+  sf::st_cast(to ="POLYGON") |>
+  sf::st_set_crs(sf::st_crs(ecodata::coast))
 
-D70pct_poly <- D70pct_sf |>
-  sf::st_union() #|>
-  #dplyr::summarize(geometry = sf::st_union(geometry)) |>
-  #sf::st_convex_hull() #|>
-  #sf::st_cast("POLYGON")   
-  #sf::st_buffer(dist = 1)
+# just in case 75th too
+D75pct_sf <- sf::st_as_sf(D75pct, coords = c("Lon", "Lat")) 
 
-D70pct_ls <- sf::st_simplify(D70pct_sf |> 
-                           summarise()  |> 
-                           sf::st_concave_hull(ratio=0.1) |>
-                           sf::st_cast(to ="LINESTRING")) 
+D75pct_ls <- D75pct_sf |>
+  sf::st_union() |>
+  sf::st_concave_hull(ratio=0.1) |>
+  sf::st_cast(to ="LINESTRING") |>
+  sf::st_cast(to ="POLYGON") |>
+  sf::st_set_crs(sf::st_crs(ecodata::coast))
 
+# Dont need this? set crs from ecodata::coast
+# # set bounding boxes
+# neus.xmin=-77
+# neus.xmax=-65
+# neus.ymin=35
+# neus.ymax=45
+# 
+# neus.bbox1 <- sf::st_set_crs(sf::st_as_sf(as(raster::extent(neus.xmin, neus.xmax, neus.ymin, neus.ymax), "SpatialPolygons")), sf::st_crs(ecodata::coast))
+# 
+# neus.bbox2 <- sf::st_set_crs(sf::st_as_sf(as(raster::extent(-78, -74, 42, 45), "SpatialPolygons")), sf::st_crs(ecodata::coast)) # smaller bounding box to get rid of extra lines on the map 
+# 
+# neuscoast <- ecodata::coast |> 
+#   sf::st_intersection(neus.bbox1) |>
+#   sf::st_difference(neus.bbox2) # gets rid of extra non coastal line 
 
+# intersect buffer with the current FishStatsUtils::northwest_atlantic_grid
+# make northwest atlantic grid into sf object
+nwagrid_sf  <-  sf::st_as_sf(FishStatsUtils::northwest_atlantic_grid, coords = c("Lon","Lat")) %>%
+  sf::st_set_crs(sf::st_crs(ecodata::coast))
 
-  st_as_sfc() |>
-  ggplot(data=.)+geom_sf()
+# intersect, rearrange in same format as nwatl grid, and save
+D70pct_nwa <- sf::st_intersection(nwagrid_sf,D70pct_ls) %>%
+  dplyr::mutate(Lon = as.numeric(sf::st_coordinates(.)[,1]),
+                Lat = as.numeric(sf::st_coordinates(.)[,2])) |>
+  sf::st_set_geometry(NULL) |>
+  #dplyr::select(-featurecla) |>
+  dplyr::select(stratum_number, Lon, Lat, everything())
+
+write_rds(D70pct_nwa, here("spatialdat","D70pct_nwa.rds"))
+
+# intersect, rearrange in same format as nwatl grid, and save
+D75pct_nwa <- sf::st_intersection(nwagrid_sf,D75pct_ls) %>%
+  dplyr::mutate(Lon = as.numeric(sf::st_coordinates(.)[,1]),
+                Lat = as.numeric(sf::st_coordinates(.)[,2])) |>
+  sf::st_set_geometry(NULL) |>
+  #dplyr::select(-featurecla) |>
+  dplyr::select(stratum_number, Lon, Lat, everything())
+
+write_rds(D75pct_nwa, here("spatialdat","D75pct_nwa.rds"))
+
 
 ```
 
