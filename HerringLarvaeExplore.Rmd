@@ -851,9 +851,9 @@ gq
 
 These methods are similar to those used in the bluefish RTA for the forage index nearshore strata 3 miles from shore.
 
-First make the 70th percentile+ points into an `sf` object, then intersect that object with the built in `FishStatsUtils::northwest_atlantic_grid`, then define new strata based on that intersection, and call them as strata.limits when running the small copepods model.
+First make the 70th percentile+ points into an `sf` object, then intersect that object with the built in `FishStatsUtils::northwest_atlantic_grid`:
 
-```{r}
+```{r, eval=FALSE}
 
 # dataframe to sf object
 D70pct_sf <- sf::st_as_sf(D70pct, coords = c("Lon", "Lat")) 
@@ -897,7 +897,7 @@ nwagrid_sf  <-  sf::st_as_sf(FishStatsUtils::northwest_atlantic_grid, coords = c
   sf::st_set_crs(sf::st_crs(ecodata::coast))
 
 # intersect, rearrange in same format as nwatl grid, and save
-D70pct_nwa <- sf::st_intersection(nwagrid_sf,D70pct_ls) %>%
+D70pct_nwa <- sf::st_intersection(nwagrid_sf,D70pct_ls) %>% #native pipe wont do dots
   dplyr::mutate(Lon = as.numeric(sf::st_coordinates(.)[,1]),
                 Lat = as.numeric(sf::st_coordinates(.)[,2])) |>
   sf::st_set_geometry(NULL) |>
@@ -907,7 +907,7 @@ D70pct_nwa <- sf::st_intersection(nwagrid_sf,D70pct_ls) %>%
 write_rds(D70pct_nwa, here("spatialdat","D70pct_nwa.rds"))
 
 # intersect, rearrange in same format as nwatl grid, and save
-D75pct_nwa <- sf::st_intersection(nwagrid_sf,D75pct_ls) %>%
+D75pct_nwa <- sf::st_intersection(nwagrid_sf,D75pct_ls) %>% #native pipe wont do dots
   dplyr::mutate(Lon = as.numeric(sf::st_coordinates(.)[,1]),
                 Lat = as.numeric(sf::st_coordinates(.)[,2])) |>
   sf::st_set_geometry(NULL) |>
@@ -919,7 +919,204 @@ write_rds(D75pct_nwa, here("spatialdat","D75pct_nwa.rds"))
 
 ```
 
+The portions of `nortwest_atlantic_grid` intersecting with the 70th and 75th percentile of herring larval density (1982-2022) were saved in the spatialdat folder. Next, we define new strata based on that intersection and make a new extrapolation grid. Then we can use this grid and call the new strata as strata.limits when running the small copepods model.
 
+Right now just make a grid for the 70th percentile; we can make one for 75th if needed later.
+
+```{r, eval=FALSE}
+
+D70pct_nwa <- readRDS(here("spatialdat/D70pct_nwa.rds"))
+
+D70pct_nwast <- D70pct_nwa %>%
+  dplyr::mutate(strat2 = 1) %>% #herring larvae = 1
+  dplyr::right_join(FishStatsUtils::northwest_atlantic_grid) %>%
+  dplyr::mutate(strat2 = replace_na(strat2, 2)) %>% #replace NA with 2 for non-larval
+  dplyr::mutate(stratum_number2 = as.numeric(paste0(stratum_number, strat2))) %>%
+  dplyr::select(-strat2)
+
+saveRDS(D70pct_nwast, here("spatialdat","D75pct_nwa_strat2.rds"))
+
+# new lookups
+
+herring_spring <- c(01010, 01020, 01030, 01040, 01050, 01060, 01070, 01080, 01090, 
+                    01100, 01110, 01120, 01130, 01140, 01150, 01160, 01170, 01180, 
+                    01190, 01200, 01210, 01220, 01230, 01240, 01250, 01260, 01270, 
+                    01280, 01290, 01300, 01360, 01370, 01380, 01390, 01400, 01610, 
+                    01620, 01630, 01640, 01650, 01660, 01670, 01680, 01690, 01700, 
+                    01710, 01720, 01730, 01740, 01750, 01760)
+herring_fall <- c(01050, 01060, 01070, 01080, 01090, 01100, 01110, 01120, 01130, 
+                  01140, 01150, 01160, 01170, 01180, 01190, 01200, 01210, 01220, 
+                  01230, 01240, 01250, 01260, 01270, 01280, 01290, 01300, 01360, 
+                  01370, 01380, 01390, 01400)
+
+MAB <- c(1010:1080, 1100:1120, 1600:1750, 3010:3450, 3470, 3500, 3510)
+GB  <- c(1090, 1130:1210, 1230, 1250, 3460, 3480, 3490, 3520:3550)
+GOM <- c(1220, 1240, 1260:1290, 1360:1400, 3560:3830)
+SS  <- c(1300:1352, 3840:3990)
+
+# MAB EPU
+MAB2 <- D70pct_nwast %>% 
+  dplyr::filter(stratum_number %in% MAB) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# MAB herring larvae area
+MAB2herr <- MAB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+# MAB outside larval area
+MAB2out <- MAB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2) 
+
+# Georges Bank EPU
+GB2 <- D70pct_nwast %>% 
+  dplyr::filter(stratum_number %in% GB) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# GB herring larvae
+GB2herr <- GB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+#GB outside larval area
+GB2out <- GB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2)
+
+# gulf of maine EPU 
+GOM2 <- D70pct_nwast %>%
+  dplyr::filter(stratum_number %in% GOM) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# GOM herring larvae
+GOM2herr <- GOM2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+#GOM outside larval area
+GOM2out <- GOM2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2)
+
+# scotian shelf EPU 
+SS2 <- D70pct_nwast %>%
+  dplyr::filter(stratum_number %in% SS) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# SS herring larvae
+SS2herr <- SS2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+#SS outside larval area
+SS2out <- SS2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2)
+
+# whole herring larval area
+herrlarv <- dplyr::bind_rows(MAB2herr, GB2herr, GOM2herr, SS2herr)
+
+# outside herring larval area
+nolarv <- dplyr::bind_rows(MAB2out, GB2out, GOM2out, SS2out)
+
+# spring herring NEFSC BTS
+her_spr2 <- D70pct_nwast %>%
+  dplyr::filter(stratum_number %in% herring_spring) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# fall herring NEFSC BTS
+her_fall2 <- D70pct_nwast %>%
+  dplyr::filter(stratum_number %in% herring_fall) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# all epus
+allEPU2 <- D70pct_nwast %>%
+  dplyr::filter(stratum_number %in% c(MAB, GB, GOM, SS)) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+```
+
+
+Modify the function from `FishStatsUtils::Prepare_NWA_Extrapolation_Data_Fn` to make a new grid with updated strata
+
+```{r newprepextrap, eval=FALSE}
+
+Prepare_NWA_Extrapolation_Data_Fn_skg <- function (strata.limits = NULL, 
+                                               epu_to_use = c("All", "Georges_Bank", "Mid_Atlantic_Bight", "Scotian_Shelf", "Gulf_of_Maine", "Other")[1],
+                                               projargs = NA, zone = NA, flip_around_dateline = FALSE, ...) 
+{
+    if (is.null(strata.limits)) {
+        strata.limits = list(All_areas = 1:1e+05)
+    }
+    message("Using strata ", strata.limits)
+    if (any(tolower(epu_to_use) %in% "all")) {
+        epu_to_use <- c("Georges_Bank", "Mid_Atlantic_Bight", 
+            "Scotian_Shelf", "Gulf_of_Maine", "Other")
+    }
+    utils::data(northwest_atlantic_grid, package = "FishStatsUtils")
+    Data_Extrap <- D70pct_nwast
+    Tmp = cbind(BEST_DEPTH_M = 0, BEST_LAT_DD = Data_Extrap[, 
+        "Lat"], BEST_LON_DD = Data_Extrap[, "Lon"])
+    if (length(strata.limits) == 1 && strata.limits[1] == "EPU") {
+        Data_Extrap <- Data_Extrap[Data_Extrap$EPU %in% epu_to_use, 
+            ]
+        Data_Extrap$EPU <- droplevels(Data_Extrap$EPU)
+        a_el = matrix(NA, nrow = nrow(Data_Extrap), ncol = length(epu_to_use), 
+            dimnames = list(NULL, epu_to_use))
+        Area_km2_x = Data_Extrap[, "Area_in_survey_km2"]
+        for (l in 1:ncol(a_el)) {
+            a_el[, l] = ifelse(Data_Extrap[, "EPU"] %in% epu_to_use[[l]], 
+                Area_km2_x, 0)
+        }
+    }
+    else {
+        a_el = as.data.frame(matrix(NA, nrow = nrow(Data_Extrap), 
+            ncol = length(strata.limits), dimnames = list(NULL, 
+                names(strata.limits))))
+        Area_km2_x = Data_Extrap[, "Area_in_survey_km2"]
+        for (l in 1:ncol(a_el)) {
+            a_el[, l] = ifelse(Data_Extrap[, "stratum_number2"] %in% 
+                strata.limits[[l]], Area_km2_x, 0)
+        }
+    }
+    tmpUTM = project_coordinates(X = Data_Extrap[, "Lon"], Y = Data_Extrap[, 
+        "Lat"], projargs = projargs, zone = zone, flip_around_dateline = flip_around_dateline)
+    Data_Extrap = cbind(Data_Extrap, Include = 1)
+    Data_Extrap[, c("E_km", "N_km")] = tmpUTM[, c("X", "Y")]
+    Return = list(a_el = a_el, Data_Extrap = Data_Extrap, zone = attr(tmpUTM, 
+        "zone"), projargs = attr(tmpUTM, "projargs"), flip_around_dateline = flip_around_dateline, 
+        Area_km2_x = Area_km2_x)
+    return(Return)
+}
+
+
+```
+
+Now define new `strata.limits`. *Needed? We do this at runtime*
+
+```{r stratalimits, eval=FALSE}
+
+strata.limits <- as.list(c("AllEPU" = allEPU2,
+                           "her_sp" = her_spr2,
+                           "her_fa" = her_fall2,
+                           "her_larv" = herrlarv,
+                           "no_larv" = nolarv,
+                           "MAB" = MAB2,
+                           "GB" = GB2,
+                           "GOM" = GOM2,
+                           "SS" = SS2
+))
+```
+
+Make the new extrapolation list:
+
+```{r extraplist, eval=FALSE}
+
+Extrapolation_List  <-  Prepare_NWA_Extrapolation_Data_Fn_skg( strata.limits=strata.limits)
+
+saveRDS(Extrapolation_List, file = here("spatialdat/CustomExtrapolationList.rds"))
+
+```
 
 
 ## Compare with fall small copepod models
