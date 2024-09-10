@@ -934,7 +934,7 @@ D70pct_nwast <- D70pct_nwa %>%
   dplyr::mutate(stratum_number2 = as.numeric(paste0(stratum_number, strat2))) %>%
   dplyr::select(-strat2)
 
-saveRDS(D70pct_nwast, here("spatialdat","D75pct_nwa_strat2.rds"))
+saveRDS(D70pct_nwast, here("spatialdat","D70pct_nwa_strat2.rds"))
 
 # new lookups
 
