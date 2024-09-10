@@ -668,6 +668,9 @@ D_gt <- D_gt %>% as.data.frame() %>%
     tibble::rownames_to_column(var = "cell") %>%
     pivot_longer(-cell, names_to = "Year", values_to='D')
 D <- merge(D_gt, mdl$PlotDF, by.x='cell', by.y='x2i')
+
+saveRDS(D, "Dherr_sepfeb.rds")
+
 g <- gmap +
   geom_point(data=D, aes(Lon, Lat, color=log(as.vector(D)), group=NULL),
              ## These settings are necessary to avoid
@@ -700,6 +703,8 @@ Calculate quantiles of distribution across the time series. First sum all cells 
 ```{r, fig.width=10}
 
 # one option, sum D_gct over all years then take quantiles in space
+
+D <- readRDS("Dherr_sepfeb.rds")
 
 Dtot <- D |> 
   dplyr::group_by(cell) |>
