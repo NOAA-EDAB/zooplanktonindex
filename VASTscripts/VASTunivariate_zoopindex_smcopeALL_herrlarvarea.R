@@ -21,32 +21,32 @@ herringfood_stn <- herringfood_stn %>%
 
 ########################################################################
 # herring larvae for comparisons with small copeopods
-
-herringlarvae_stn_sepfeb <- herringfood_stn %>%
-  #ungroup() %>%
-  dplyr::filter(season_larv == TRUE) %>%
-  dplyr::mutate(AreaSwept_km2 = 1, #Elizabeth's code
-         #declon = -declon already done before neamap merge
-         Vessel = 1,
-         Dayofyear = lubridate::yday(date),
-         yearshift = ifelse(month < 3, year-1, year)#as.numeric(as.factor(vessel))-1
-  ) %>% 
-  dplyr::filter(yearshift>1981) |>
-  dplyr::select(Catch_g = cluhar_100m3, #use megabenwt for individuals input in example
-                Year = yearshift,
-                Month = month,
-                Dayofyear,
-                Vessel,
-                AreaSwept_km2,
-                Lat = lat,
-                Lon = lon,
-                #btm_temp, #this leaves out many stations
-                #sfc_temp, #this leaves out many stations
-                #oisst,
-                sstfill
-  ) %>%
-  na.omit() %>%
-  as.data.frame()
+# 
+# herringlarvae_stn_sepfeb <- herringfood_stn %>%
+#   #ungroup() %>%
+#   dplyr::filter(season_larv == TRUE) %>%
+#   dplyr::mutate(AreaSwept_km2 = 1, #Elizabeth's code
+#          #declon = -declon already done before neamap merge
+#          Vessel = 1,
+#          Dayofyear = lubridate::yday(date),
+#          yearshift = ifelse(month < 3, year-1, year)#as.numeric(as.factor(vessel))-1
+#   ) %>% 
+#   dplyr::filter(yearshift>1981) |>
+#   dplyr::select(Catch_g = cluhar_100m3, #use megabenwt for individuals input in example
+#                 Year = yearshift,
+#                 Month = month,
+#                 Dayofyear,
+#                 Vessel,
+#                 AreaSwept_km2,
+#                 Lat = lat,
+#                 Lon = lon,
+#                 #btm_temp, #this leaves out many stations
+#                 #sfc_temp, #this leaves out many stations
+#                 #oisst,
+#                 sstfill
+#   ) %>%
+#   na.omit() %>%
+#   as.data.frame()
 
 smallcopeALL_stn_sepfeb <- herringfood_stn %>%
   #ungroup() %>%
@@ -95,52 +95,86 @@ GB  <- c(1090, 1130:1210, 1230, 1250, 3460, 3480, 3490, 3520:3550)
 GOM <- c(1220, 1240, 1260:1290, 1360:1400, 3560:3830)
 SS  <- c(1300:1352, 3840:3990)
 
+D70pct_nwast <- readRDS(here("spatialdat/D70pct_nwa_strat2.rds"))
+
+# MAB EPU
+MAB2 <- D70pct_nwast %>% 
+  dplyr::filter(stratum_number %in% MAB) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# MAB herring larvae area
+MAB2herr <- MAB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+# MAB outside larval area
+MAB2out <- MAB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2) 
+
+# Georges Bank EPU
+GB2 <- D70pct_nwast %>% 
+  dplyr::filter(stratum_number %in% GB) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# GB herring larvae
+GB2herr <- GB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+#GB outside larval area
+GB2out <- GB2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2)
+
+# gulf of maine EPU 
+GOM2 <- D70pct_nwast %>%
+  dplyr::filter(stratum_number %in% GOM) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# GOM herring larvae
+GOM2herr <- GOM2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+#GOM outside larval area
+GOM2out <- GOM2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2)
+
+# scotian shelf EPU 
+SS2 <- D70pct_nwast %>%
+  dplyr::filter(stratum_number %in% SS) %>%
+  dplyr::select(stratum_number2) %>%
+  dplyr::distinct()
+
+# SS herring larvae
+SS2herr <- SS2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 1) 
+
+#SS outside larval area
+SS2out <- SS2 %>%
+  dplyr::filter(stratum_number2 %% 10 == 2)
+
+# whole herring larval area
+herrlarv <- dplyr::bind_rows(MAB2herr, GB2herr, GOM2herr, SS2herr)
+
+# outside herring larval area
+nolarv <- dplyr::bind_rows(MAB2out, GB2out, GOM2out, SS2out)
+
 # spring herring NEFSC BTS
-her_spr <- FishStatsUtils::northwest_atlantic_grid %>% 
+her_spr2 <- D70pct_nwast %>%
   dplyr::filter(stratum_number %in% herring_spring) %>%
-  dplyr::select(stratum_number) %>%
+  dplyr::select(stratum_number2) %>%
   dplyr::distinct()
 
 # fall herring NEFSC BTS
-her_fall <- FishStatsUtils::northwest_atlantic_grid %>% 
+her_fall2 <- D70pct_nwast %>%
   dplyr::filter(stratum_number %in% herring_fall) %>%
-  dplyr::select(stratum_number) %>%
+  dplyr::select(stratum_number2) %>%
   dplyr::distinct()
-
-# Mid Atlantic Bight EPU
-MAB2 <- FishStatsUtils::northwest_atlantic_grid %>% 
-  dplyr::filter(stratum_number %in% MAB) %>%
-  dplyr::select(stratum_number) %>%
-  dplyr::distinct()
-
-# Georges Bank EPU
-GB2 <- FishStatsUtils::northwest_atlantic_grid %>% 
-  dplyr::filter(stratum_number %in% GB) %>%
-  dplyr::select(stratum_number) %>%
-  dplyr::distinct()
-
-# gulf of maine EPU (for SOE)
-GOM2 <- FishStatsUtils::northwest_atlantic_grid %>% 
-  dplyr::filter(stratum_number %in% GOM) %>%
-  dplyr::select(stratum_number) %>%
-  dplyr::distinct()
-
-# scotian shelf EPU (for SOE)
-SS2 <- FishStatsUtils::northwest_atlantic_grid %>%  
-  dplyr::filter(stratum_number %in% SS) %>%
-  dplyr::select(stratum_number) %>%
-  dplyr::distinct()
-
-# needed to cover the whole northwest atlantic grid--lets try without
-# allother2 <- coast3nmbuffst %>%
-#   dplyr::filter(!stratum_number %in% c(MAB, GB, GOM, SS)) %>%
-#   dplyr::select(stratum_number2) %>%
-#   dplyr::distinct()
 
 # all epus
-allEPU2 <- FishStatsUtils::northwest_atlantic_grid %>%  
+allEPU2 <- D70pct_nwast %>%
   dplyr::filter(stratum_number %in% c(MAB, GB, GOM, SS)) %>%
-  dplyr::select(stratum_number) %>%
+  dplyr::select(stratum_number2) %>%
   dplyr::distinct()
 
 
@@ -185,8 +219,10 @@ OverdispersionConfig	<- c("eta1"=0, "eta2"=0)
 # eta2 = vessel effects on prey weight
 
 strata.limits <- as.list(c("AllEPU" = allEPU2,
-                           "her_sp" = her_spr,
-                           "her_fa" = her_fall,
+                           "her_sp" = her_spr2,
+                           "her_fa" = her_fall2,
+                           "her_larv" = herrlarv,
+                           "no_larv" = nolarv,
                            "MAB" = MAB2,
                            "GB" = GB2,
                            "GOM" = GOM2,
@@ -196,13 +232,13 @@ strata.limits <- as.list(c("AllEPU" = allEPU2,
 
 # list of data, settings, and directory for output for each option
 
-mod.season <- c("herringlarvae_sepfeb_yrshift_500", "smallcopeALL_sepfeb_yrshift_500") #includes n knots
+mod.season <- c("smallcopeALL_sepfeb_yrshift_500") #includes n knots
 
-mod.dat <- list(herringlarvae_stn_sepfeb, smallcopeALL_stn_sepfeb)
+mod.dat <- list(smallcopeALL_stn_sepfeb)
 
 names(mod.dat) <- mod.season
 
-mod.obsmod <- list(ObsModel1, ObsModel2)
+mod.obsmod <- list(ObsModel2)
 
 names(mod.obsmod) <- mod.season
 
@@ -216,7 +252,7 @@ for(season in mod.season){
   
   dat <- mod.dat[[season]]
   
-  for(config in c("biascorrect")) {
+  for(config in c("larvarea_biascorrect")) {
     
     name <- paste0(season,"_", config)
     
@@ -242,10 +278,11 @@ for(season in mod.season){
                                OverdispersionConfig = OverdispersionConfig
     )
     
+    New_Extrapolation_List <- readRDS(here::here("spatialdat/CustomExtrapolationList.rds"))
     
     fit <- try(fit_model(
       settings = settings, 
-      #extrapolation_list = New_Extrapolation_List,
+      extrapolation_list = New_Extrapolation_List,
       Lat_i = dat$Lat, 
       Lon_i = dat$Lon, 
       t_i = dat$Year, 

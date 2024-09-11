@@ -855,6 +855,9 @@ First make the 70th percentile+ points into an `sf` object, then intersect that 
 
 ```{r, eval=FALSE}
 
+# methods from https://stackoverflow.com/questions/78335772/find-outer-edge-of-polygon-in-r
+# after much trial and error, concave_hull is what we want, only available in newer sf
+
 # dataframe to sf object
 D70pct_sf <- sf::st_as_sf(D70pct, coords = c("Lon", "Lat")) 
   
