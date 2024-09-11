@@ -160,7 +160,7 @@ FieldConfig = matrix( "IID", ncol=2, nrow=3,
                       dimnames=list(c("Omega","Epsilon","Beta"),c("Component_1","Component_2")))
 
 # Try setting Omega1 to 0
-FieldConfig[1,1] <- 0
+#FieldConfig[1,1] <- 0
 
 RhoConfig <- c(
   "Beta1" = 0,      # temporal structure on years (intercepts) 
