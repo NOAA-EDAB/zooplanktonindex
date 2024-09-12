@@ -1,0 +1,89 @@
+---
+title: "Attempt recruitment covariates in herring WHAM model"
+author: "Sarah Gaichas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_fold: hide
+link-citations: yes
+csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
+bibliography: zoopindex.bib
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(tidyverse)
+library(here)
+library(DT)
+library(patchwork)
+library(wham)
+
+```
+
+# Introduction
+
+Now that we have way too many copeopod time series, lets see if any of them are useful covariates in the Atlantic herring assessment model.
+
+The primary target is a covariate on Atlamntic herring recruitment. 
+
+Adelle's boosted regression tree model shows both spring large copepods and fall small copepods as important factors explaining recruitment patterns estimated by the WHAM model.
+
+We have also developed a herring-larvae specific small copepod index within the area with more than the 70th percentile of cumulative 1982-2022 herring larvae density.  
+
+So we can try at least three flavors of copepod index as a model covariate.
+
+# Methods
+
+Installed multiWHAM from the `devel` branch: https://github.com/timjmiller/wham/tree/devel
+
+`devtools::install_github("timjmiller/wham", dependencies=TRUE, ref="devel")`
+
+Installation worked on the outdated mac os... so far. 
+
+Lets test the installation by seeing if I can get the same outputs as Jon did by running the model without any additions.
+
+Modify Jon's code from the Atlantic Herring RTWG google drive and now in this directory, `Example WHAM code to share.R` which sources his `WHAMfxns.R` and `hindcast.R` also now in this directory.
+
+```{r}
+#source some functions
+source(here::here("WHAMfits/WHAMfxns.R"))
+#source the hindcast function for MASE etc.
+source(here::here("WHAMfits/hindcast.R"))
+
+# starting with mm192, add suffix for different attempts
+# test with no change
+
+config <- "nochange"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+# copy the input dat file to model directory
+asapRun2_87 <- here::here("WHAMfits/mm192/Run2_87.DAT")
+file.copy(from=file.path(asapRun2_87), to=write.dir, overwrite=FALSE)
+
+asapRun2dat<- read_asap3_dat(here::here(write.dir, "Run2_87.DAT"))
+
+# need data files read in to run these
+asapRun2dat=CVfxn(asapRun9dat) #empirical CVs
+asapRun2dat=ESSfxn(asapRun9dat,addnumcatch=150,addnumsurv=150)
+
+
+
+
+
+
+```
+
+
+
