@@ -1139,4 +1139,123 @@ ggplot2::ggplot(data = ecodata::coast) +
 
 ```
 
+# Results: Small copepods in the herring larval area
+
+Using the new grid, run the smallcopeALL_sepfeb dataset in VAST to get an index in the herring larvae area as well as in the others. 
+
+Script for doing this is https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/VASTscripts/VASTunivariate_zoopindex_smcopeALL_herrlarvarea.R
+
+The model converged, diagnostics look fine. 
+
+Visualize these small copepod model indices:
+
+```{r, fig.height=10, fig.asp=2}
+
+# add the new herring larval stratum
+
+stratlook2 <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7",
+                                    "Stratum_8",
+                                    "Stratum_9"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "her_larv",
+                                    "no_larv",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
+
+# only larvarea models have this strata set
+splitoutput2 <- modcompareindex %>%
+  dplyr::filter(str_detect(modname, "larvarea")) |>
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook2)
+
+# tack on what should be the same model in the original extrapolation grid to make sure nothing went wrong
+# the same strata should have the same trends
+smcopesepfeb <- splitoutput |>
+  dplyr::filter(modname == "smallcopeALL_sepfeb_yrshift_500_biascorrect")
+
+splitoutput2 <- dplyr::bind_rows(splitoutput2, smcopesepfeb)
+
+plot_zooindices(splitoutput = splitoutput2, 
+             plotdata = "smallcopeALL", 
+             plotregions = c("her_larv", "no_larv", "her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Small copepods Sept-Feb") 
+
+
+```
+
+We get the same time series for the comparable areas using the original and new extrapolation grid, as expected. (All time series overlap.)
+
+Compare small copepods inside and outside herring larval area:
+
+```{r}
+plot_zooindices(splitoutput = splitoutput2, 
+             plotdata = "smallcopeALL", 
+             plotregions = c("her_larv", "no_larv"), 
+             plottitle = "Small copepods Sept-Feb") 
+```
+
+On the same plot to compare scale:
+
+```{r}
+plotdata <- c("smallcopeALL")
+plottitle  <-  "Small copepods Sept-Feb inside (herr_larv) and outside (no_larv) herring larval area"
+
+  fix<- splitoutput2 |>
+    dplyr::filter(Data %in% plotdata, 
+                  Region %in% c("her_larv", "no_larv")
+                  ) |>
+    dplyr::group_by(Season) |> #Region,
+    dplyr::summarise(max = max(Estimate, na.rm=T))
+  
+  p <- splitoutput2 |>
+    dplyr::filter(Data %in% plotdata, #c("calfin"),
+                  Region %in% c("her_larv", "no_larv")
+                  ) |>
+    dplyr::group_by(Season) |> #Region, 
+    dplyr::left_join(fix) |>
+    dplyr::mutate(#Value = Value/resca,
+      Mean = as.numeric(Estimate),
+      SE = Std..Error.for.Estimate,
+      Mean = Mean/max,
+      SE = SE/max,
+      Upper = Mean + SE,
+      Lower = Mean - SE) |>
+    ggplot2::ggplot(ggplot2::aes(x = Time, y = Mean, linetype = Region, group = Region))+
+    #ggplot2::annotate("rect", fill = setup$shade.fill, alpha = setup$shade.alpha,
+    #                  xmin = setup$x.shade.min , xmax = setup$x.shade.max,
+    #                  ymin = -Inf, ymax = Inf) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = Lower, ymax = Upper, fill = Region), alpha = 0.5)+
+    ggplot2::geom_point()+
+    ggplot2::geom_line()+
+    ggplot2::ggtitle(plottitle)+
+    ggplot2::ylab(expression("Relative abundance"))+
+    ggplot2::xlab(ggplot2::element_blank())+
+    ggplot2::facet_wrap(~Season, #Region~ ncol = ncols, 
+                        labeller = label_wrap_gen(multi_line=FALSE))+
+    #ecodata::geom_gls()+
+    ecodata::theme_ts()+
+    ecodata::theme_facet()+
+    ecodata::theme_title() +
+    ggplot2::theme(legend.position = "bottom")
+  
+ p
+```
+
+The small copepods inside the herring larval area have been about the same or more than those outside recently. 
+
+We'll see if any of this helps as a covariate on recruitment...
+
+# References
 
