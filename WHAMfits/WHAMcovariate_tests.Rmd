@@ -149,7 +149,7 @@ env.dat <- read.csv(here::here("WHAMfits/springlargecopeindex.csv"), header=T)
 # test a single ecov setup with no effect first
 ecov <- list(
     label = "lgCopeSpr",
-    mean = as.matrix(log(env.dat$her_sp_Estimate)),
+    mean = as.matrix(env.dat$her_sp_Estimate),
     logsigma = as.matrix(log(env.dat$her_sp_SE)),
     year = env.dat$Time,
     use_obs = matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
@@ -186,13 +186,17 @@ ecovinput <- prepare_wham_input(asap3 = asapdat, # correct structurr, asap3 is w
                                                   XSPR_R_avg_yrs = 6:35, 
                                                   XSPR_R_opt = 5))
 
-# breaking. instead try adding ecov components to current working input list
-
-
-
 mod <- fit_wham(ecovinput, do.osa = F)
 
-saveRDS(mod, file.path(write.dir, "testecovoff.rds")
+saveRDS(mod, file.path(write.dir, "testecovoff.rds"))
+
+#cant compare to original, not the same data
+#test <- compare_wham_models(mods = list("orig" = mm192mod, "testecovoff" = mod), fdir = write.dir)
+
+plot_wham_output(mod = mod, dir.main = file.path(write.dir))
+
+#saveRDS(test, file.path(write.dir, "compare.rds"))
+
 
 # larger set of ecov setups to compare
 df.mods <- data.frame(Recruitment = c(2,2,3,3,3,3,4),
