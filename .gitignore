@@ -53,3 +53,9 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# folders full of big png files
+*_png/
+
+# wham comparisons that get re-written a lot
+model_comparison.csv
