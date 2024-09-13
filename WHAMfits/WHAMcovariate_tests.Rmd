@@ -116,9 +116,91 @@ Format ecov indices; we'll try at least 3 variants:
 *  Fall small copepods (food for larvae, series tested in boosted regression tree)
 *  Sep-Feb small copepods in herring larval area (food for larvae, new series not tested in boosted regression tree but developed to better match timing and area of herring larvae)
 
-Start with spring large copepods.
+The code in [WHAMinputs.R](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/WHAMinputs.R) was used to create csv files of the VAST derives zooplankton indices. Files are saved in the [WHAMfits](https://github.com/NOAA-EDAB/zooplanktonindex/tree/main/WHAMfits) folder.
 
-```{r}
+Start with spring large copepods. Following the suggestions in [WHAM vignette 2](https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html):
+
+```{r, eval=FALSE}
+
+config <- "largecope"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+
+input <- mm192mod$input
+
+asapdat<- read_asap3_dat(here::here("WHAMfits/mm192/Run2_87.DAT"))
+
+asap3 <- input$asap3
+
+env.dat <- read.csv(here::here("WHAMfits/springlargecopeindex.csv"), header=T)
+
+# make it the same length as model ?
+#env.dat <- env.dat[env.dat$Time > 1986,]
+
+# test a single ecov setup with no effect first
+ecov <- list(
+    label = "lgCopeSpr",
+    mean = as.matrix(log(env.dat$her_sp_Estimate)),
+    logsigma = as.matrix(log(env.dat$her_sp_SE)),
+    year = env.dat$Time,
+    use_obs = matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
+    lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
+    process_model = 'rw', # "rw" or "ar1"
+    where = "none",
+    how = 0) # 0 = no effect, 1 = controlling, 2 = limiting
+
+# modify current model input call adding ecov list
+#input$call
+
+ecovinput <- prepare_wham_input(asap3 = asapdat, # correct structurr, asap3 is wrong structure
+                                model_name = "test", #df.mods[m, "Model"],
+                                ecov = ecov,
+                                recruit_model = 2, 
+                                selectivity = list(fix_pars = list(7:8, 
+                                                                   2, 
+                                                                   c(1:2, 4:8), 
+                                                                   1:8, 
+                                                                   c(1, 3:8), 
+                                                                   NULL, 
+                                                                   c(1, 4:8), 
+                                                                   NULL)), 
+                                M = list(re_model = as.matrix("none")), #as.matrix(df.mods[m, "M_re"])), 
+                                NAA_re = list(sigma = "rec+1", 
+                                              cor = "ar1_a", #df.mods[m, "naa_cor"], 
+                                              N1_model = "age-specific-fe", #init_Nnum[m], 
+                                              decouple_recruitment = TRUE), 
+                                age_comp = "logistic-normal-ar1-miss0", 
+                                basic_info = list(bias_correct_process = FALSE, 
+                                                  bias_correct_BRPs = FALSE, 
+                                                  percentSPR = 40, 
+                                                  percentFXSPR = 100, 
+                                                  XSPR_R_avg_yrs = 6:35, 
+                                                  XSPR_R_opt = 5))
+
+# breaking. instead try adding ecov components to current working input list
+
+
+
+mod <- fit_wham(ecovinput, do.osa = F)
+
+saveRDS(mod, file.path(write.dir, "testecovoff.rds")
+
+# larger set of ecov setups to compare
+df.mods <- data.frame(Recruitment = c(2,2,3,3,3,3,4),
+                      ecov_process = c(rep("rw",4),rep("ar1",3)),
+                      ecov_how = c(0,1,0,2,2,1,1), stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
 
 ```
 
