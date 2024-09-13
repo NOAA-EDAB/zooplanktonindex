@@ -48,7 +48,9 @@ Lets test the installation by seeing if I can get the same outputs as Jon did by
 
 Modify Jon's code from the Atlantic Herring RTWG google drive and now in this directory, `Example WHAM code to share.R` which sources his `WHAMfxns.R` and `hindcast.R` also now in this directory.
 
-```{r}
+First run the base model and compare with the stored to ensure my installation is ok:
+
+```{r, eval=FALSE}
 #source some functions
 source(here::here("WHAMfits/WHAMfxns.R"))
 #source the hindcast function for MASE etc.
@@ -74,16 +76,49 @@ file.copy(from=file.path(asapRun2_87), to=write.dir, overwrite=FALSE)
 
 asapRun2dat<- read_asap3_dat(here::here(write.dir, "Run2_87.DAT"))
 
-# need data files read in to run these
-asapRun2dat=CVfxn(asapRun9dat) #empirical CVs
-asapRun2dat=ESSfxn(asapRun9dat,addnumcatch=150,addnumsurv=150)
+# need data files read in to run these--but don't, 
+# the full data object is already available in the mm192 rds file
+#asapRun2dat=CVfxn(asapRun9dat) #empirical CVs
+#asapRun2dat=ESSfxn(asapRun9dat,addnumcatch=150,addnumsurv=150)
 
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
 
+input <- mm192mod$input
 
+m1 <- fit_wham(input, do.osa = F)
 
+saveRDS(m1, file.path(write.dir, "mm192nochange.rds"))
 
+check_convergence(m1)
+
+# these should be identical; they are
+test <- compare_wham_models(mods = list("orig" = mm192mod, "nochange" = m1), fdir = write.dir)
+
+saveRDS(test, file.path(write.dir, "compare.rds"))
 
 ```
+
+The original model and my rerun using the same inputs (nochange) directly overlap:
+
+```{r}
+knitr::include_graphics(here::here("WHAMfits/mm192_nochange/compare_png/compare_SSB_F_R.png"))
+```
+
+New explore environmental covariate (ecov) options. What format does the input need?
+
+Following https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html columns Year, Index, Index_sigma
+
+We are testing indices of bottom-up recruitment impacts--food for larvae, postlarvae, and juveniles
+
+Format ecov indices; we'll try at least 3 variants:
+
+*  Spring large copepods (food for postlarvae and juveniles, series tested in boosted regression tree)
+*  Fall small copepods (food for larvae, series tested in boosted regression tree)
+*  Sep-Feb small copepods in herring larval area (food for larvae, new series not tested in boosted regression tree but developed to better match timing and area of herring larvae)
+
+Start with spring large copepods.
+
+
 
 
 
