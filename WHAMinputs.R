@@ -45,7 +45,7 @@ WHAMinputs <- function(infile, strata=NULL, outfile) {
     tidyr::pivot_wider(names_from = "Region", values_from = c("Estimate", "SE"),
                        names_glue = "{Region}_{.value}", names_vary = "slowest")
   
-  readr::write_csv(forageindex, outfile)
+  readr::write_csv(zoopindex, outfile)
   
 } 
 
@@ -79,7 +79,7 @@ WHAMinputs(infile = "pyindex/lgcopeALL_spring_500_biascorrect_doy/Index.csv",
            outfile = "WHAMfits/springlargecopeindex.csv")
 
 # didn't try covariates in the small copeopods larval area model, outa time
-WHAMinputs(infile = "pyindex/allagg_annual_500_lennosst_ALLsplit_biascorrect/Index.csv",
+WHAMinputs(infile = "pyindex/smallcopeALL_sepfeb_yrshift_500_larvarea_biascorrect/Index.csv",
            strata = stratlook2,
            outfile = "WHAMfits/sepfebsmallcopeALLlarvareaindex.csv")
 
