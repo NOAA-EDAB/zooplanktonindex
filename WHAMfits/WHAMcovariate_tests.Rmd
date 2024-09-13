@@ -118,6 +118,9 @@ Format ecov indices; we'll try at least 3 variants:
 
 Start with spring large copepods.
 
+```{r}
+
+```
 
 
 
