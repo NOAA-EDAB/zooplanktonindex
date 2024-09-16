@@ -151,12 +151,12 @@ env.dat <- read.csv(here::here("WHAMfits/springlargecopeindex.csv"), header=T)
 # test a single ecov setup with no effect first
 ecov_on <- list(
     label = "lgCopeSpr",
-    mean = as.matrix(env.dat$her_sp_Estimate),
-    logsigma = "est_1", #as.matrix(log(env.dat$her_sp_SE)),
+    mean = as.matrix(env.dat$her_sp_Estimate/1000000),
+    logsigma = as.matrix(log(env.dat$her_sp_SE/1000000)), #"est_1", 
     year = env.dat$Time,
     use_obs = matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
     lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
-    process_model = 'rw', # "rw" or "ar1"
+    process_model = "ar1", # "rw" or "ar1"
     #where = "recruit",
     recruitment_how = as.matrix("controlling-lag-0-linear")) # 0 = no effect, 1 = controlling, 2 = limiting
 
@@ -199,12 +199,12 @@ plot_wham_output(mod = ecovon_mod, dir.main = file.path(write.dir))
 # test a single ecov setup with no effect first
 ecov_off <- list(
     label = "lgCopeSpr",
-    mean = as.matrix(env.dat$her_sp_Estimate),
-    logsigma = as.matrix(log(env.dat$her_sp_SE)),
+    mean = as.matrix(env.dat$her_sp_Estimate/1000000),
+    logsigma = as.matrix(log(env.dat$her_sp_SE/1000000)),
     year = env.dat$Time,
     use_obs = matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
     lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
-    process_model = 'rw', # "rw" or "ar1"
+    process_model = "ar1", # "rw" or "ar1"
     #where = "recruit",
     recruitment_how = as.matrix("none")) # 0 = no effect, 1 = controlling, 2 = limiting
 
@@ -219,11 +219,26 @@ saveRDS(mod, file.path(write.dir, "testecovoff.rds"))
 
 
 #compare to original, not the same data
-test <- compare_wham_models(mods = list("testcovoff" = mod, "testecovon" = readRDS(file.path(write.dir, "testecovon.rds"))), fdir = write.dir)
+test <- compare_wham_models(mods = list("testecovoff" = mod, "testecovon" = ecovon_mod), fdir = write.dir)
+
+saveRDS(test, file.path(write.dir, "testcompare.rds"))
 
 ```
 
-The model runs with ecov in but not turned on. Results looks similar to the base model, but can't be directly compared because different datasets.
+Test run was broken until I changed units of zooplankton to millions of cells.
+
+Now everything runs, the covariate is included, and makes no difference in the model (which looks identical to the base model so thats a plus):
+
+```{r}
+testcompare <- readRDS(here::here("WHAMfits/mm192_largecope/testcompare.rds"))
+
+knitr::include_graphics(here::here("WHAMfits/mm192_largecope/plots_png/results/Ecov_1_lgCopeSpr.png"))
+
+testcompare$tab
+
+testcompare$g[[1]]
+```
+
 
 Lets try a suite of models with the same recruitment process but different ways the large copepod series relates to it.
 
@@ -231,14 +246,25 @@ We'll always use recruitment process 2, random about mean, because that is in mm
 
 We'll look at both random walk "rw" and AR1 "ar1" processes for the environmental covariate. 
 
-Environmental covariates will link to recruitment not at all (0), as a controlling process (1), as a limiting process (2), or as a masking process (4). The other two possible processes, lethal (3) and directive/behavioral (5) make less sense to me for a food covariate on recruitment but I could be convinced to try them next. 
+We'll set the parameter `recruitment_how` as one of the following:
+  \item{= "none"}{no effect.}
+  \item{= "controlling"}{pre-recruit density-independent mortality.}
+  \item{= "limiting"}{ maximum recruitment, e.g. ecov determines amount of suitable habitat)}
+  \item{= "lethal"}{threshold, i.e. R --> 0 at some ecov value.}
+  \item{= "masking"}{metabolic/growth, decreases dR/dS}
+  \item{= "directive"}{e.g. behavioral}
+
+Going to try "none", "controlling", "limiting", and "masking" (note that "masking" didn't work well in the state space RTA simulations).
 
 ```{r, eval=FALSE}
 
 # larger set of ecov setups to compare
 df.mods <- data.frame(Recruitment = c(rep(2, 8)),
                       ecov_process = c(rep("rw",4),rep("ar1",4)),
-                      ecov_how = c(0,1,2,4,0,1,2,4), stringsAsFactors=FALSE)
+                      ecov_how = rep(c("none",
+                                       "controlling-lag-0-linear",
+                                       "limiting-lag-0-linear",
+                                       "masking-lag-0-linear"),2), stringsAsFactors=FALSE)
 n.mods <- dim(df.mods)[1]
 df.mods$Model <- paste0("m",1:n.mods)
 df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
@@ -246,47 +272,21 @@ df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model
 for(m in 1:n.mods){
   ecov <- list(
     label = "lgCopeSpr",
-    mean = as.matrix(env.dat$her_sp_Estimate),
-    logsigma = as.matrix(log(env.dat$her_sp_SE)),
+    mean = as.matrix(env.dat$her_sp_Estimate/1000000),
+    logsigma = as.matrix(log(env.dat$her_sp_SE/1000000)),
     year = env.dat$Time,
     use_obs = matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
     lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
     process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
-    where = c("recruit")[as.logical(df.mods$ecov_how[m])+1],
-    how = df.mods$ecov_how[m]) # 0 = no effect, 1 = controlling, 2 = limiting
+    #where = c("recruit")[as.logical(df.mods$ecov_how[m])+1],
+    recruitment_how = as.matrix(df.mods$ecov_how[m])) # 0 = no effect, 1 = controlling, 2 = limiting
   
-  # modify current model input call adding ecov list
-  #input$call
-  
-  ecovinput <- prepare_wham_input(asap3 = asapdat, # correct structurr, asap3 is wrong structure
-                                  model_name = "test", #df.mods[m, "Model"],
-                                  ecov = ecov,
-                                  recruit_model = df.mods$Recruitment[m], 
-                                  selectivity = list(fix_pars = list(7:8, 
-                                                                     2, 
-                                                                     c(1:2, 4:8), 
-                                                                     1:8, 
-                                                                     c(1, 3:8), 
-                                                                     NULL, 
-                                                                     c(1, 4:8), 
-                                                                     NULL)), 
-                                  M = list(re_model = as.matrix("none")), #as.matrix(df.mods[m, "M_re"])), 
-                                  NAA_re = list(sigma = "rec+1", 
-                                                cor = "ar1_a", #df.mods[m, "naa_cor"], 
-                                                N1_model = "age-specific-fe", #init_Nnum[m], 
-                                                decouple_recruitment = TRUE), 
-                                  age_comp = "logistic-normal-ar1-miss0", 
-                                  basic_info = list(bias_correct_process = FALSE, 
-                                                    bias_correct_BRPs = FALSE, 
-                                                    percentSPR = 40, 
-                                                    percentFXSPR = 100, 
-                                                    XSPR_R_avg_yrs = 6:35, 
-                                                    XSPR_R_opt = 5))
-  
+  ecovinput <- set_ecov(input, ecov=ecov)
+
   mod <- fit_wham(ecovinput, do.osa = T)
   
   # Save model
-  saveRDS(mod, file=paste0(df.mods$Model[m],".rds"))
+  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds"))
   
   # Plot output in new subfolder
   plot_wham_output(mod=mod, dir.main=file.path(write.dir,df.mods$Model[m]), out.type='html')
