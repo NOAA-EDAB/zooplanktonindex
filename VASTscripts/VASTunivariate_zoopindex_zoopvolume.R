@@ -253,6 +253,7 @@ for(season in mod.season){
     }
     
     ObsModel <- mod.obsmod[[season]]
+    Q_ik <- mod.Qik[[covar]]
     
     settings <- make_settings( n_x = 500, 
                                Region = "northwest_atlantic",
