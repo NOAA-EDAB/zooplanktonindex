@@ -24,7 +24,7 @@ library(wham)
 
 Now that we have way too many copeopod time series, lets see if any of them are useful covariates in the Atlantic herring assessment model.
 
-The primary target is a covariate on Atlamntic herring recruitment. 
+The primary target is a covariate on Atlantic herring recruitment. 
 
 Adelle's boosted regression tree model shows both spring large copepods and fall small copepods as important factors explaining recruitment patterns estimated by the WHAM model.
 
@@ -387,6 +387,8 @@ df.mods
 
 Outputs are nearly identical for SSB and F, but there are small differences in status determination.
 
+*Ignore results from the limiting and masking models as Bev-Holt parameters aren't really being estimated.*
+
 *The numbers in the plots are not the model numbers! They are in order by the first table above*
 
 ```{r}
@@ -406,6 +408,314 @@ knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_ko
 
 ## Fall small copepods covariate
 
+Similar approach for first pass at fall small copepods. These will lag 1.
 
+Setup
+
+```{r}
+config <- "smcopeFall"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+
+input <- mm192mod$input
+
+# asapdat<- read_asap3_dat(here::here("WHAMfits/mm192/Run2_87.DAT"))
+# 
+# asap3 <- input$asap3
+
+
+# larger set of ecov setups to compare
+df.mods <- data.frame(Recruitment = c(rep(c(2,2,3,3), 2)),
+                      ecov_process = c(rep("rw",4),rep("ar1",4)),
+                      ecov_how = rep(c("none",
+                                       "controlling-lag-1-linear",
+                                       "limiting-lag-1-linear",
+                                       "masking-lag-1-linear"),2), stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+```
+
+Run models
+
+```{r, eval=FALSE}
+
+
+env.dat <- read.csv(here::here("WHAMfits/fallsmallcopeALLindex.csv"), header=T)
+# 2020 is missing
+env.dat[env.dat == 0] <- NA
+
+# don't use the NA value
+use.obs <- matrix(1, ncol=1, nrow=dim(env.dat)[1])
+use.obs[39,] <- 0
+  
+
+for(m in 1:n.mods){
+  
+  ecov <- list(
+    label = "msCopeFall",
+    mean = as.matrix(env.dat$her_fa_Estimate/1000000),
+    logsigma = as.matrix(log(env.dat$her_fa_SE/1000000)),
+    year = env.dat$Time,
+    use_obs = use.obs, # matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
+    #lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
+    process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
+    #where = c("recruit")[as.logical(df.mods$ecov_how[m])+1],
+    recruitment_how = as.matrix(df.mods$ecov_how[m])
+    ) # 0 = no effect, 1 = controlling, 2 = limiting
+  
+  # this isn't working, not estimating a recruitment function
+  # for the best because it will break
+  # for reference, this code should be added to attempt
+  #input206 <- set_NAA(mm192$mm192$input, NAA_re=list(recruit_model=3,sigma="rec+1",cor="ar1_a",N1_model="age-specific-fe",decouple_recruitment=TRUE))
+  input$data$recruit_model <- df.mods$Recruitment[m]
+  input$options$basic_info$recruit_model <- df.mods$Recruitment[m]
+  
+  ecovinput <- set_ecov(input, ecov=ecov)
+
+  mod <- fit_wham(ecovinput, do.osa = T)
+  
+  # Save model
+  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds")))
+  
+  # Plot output in new subfolder
+  plot_wham_output(mod=mod, dir.main=file.path(write.dir,df.mods$Model[m]), out.type='html')
+  
+}
+
+
+```
+
+Estimated small copepods all Fall covariate ("ar1", m5):
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m5/plots_png/results/Ecov_1_msCopeFall.png"))
+```
+
+
+Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
+
+*Ignore results from the limiting and masking models as Bev-Holt parameters aren't really being estimated.*
+
+Also nothing worked that had a recruitment effect
+
+```{r}
+mod.list <- paste0(write.dir, df.mods$Model,".rds")
+mods <- lapply(mod.list, readRDS)
+
+n.mods <- length(mod.list)
+
+vign2_conv <- lapply(mods, function(x) capture.output(check_convergence(x)))
+for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
+
+
+opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
+ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+df.mods$conv <- as.logical(opt_conv)
+df.mods$pdHess <- as.logical(ok_sdrep)
+df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
+
+not_conv <- !df.mods$conv | !df.mods$pdHess
+mods2 <- mods
+mods2[not_conv] <- NULL
+df.aic.tmp <- as.data.frame(compare_wham_models(mods2, table.opts=list(sort=FALSE, calc.rho=T))$tab)
+df.aic <- df.aic.tmp[FALSE,]
+ct = 1
+for(i in 1:n.mods){
+  if(not_conv[i]){
+    df.aic[i,] <- rep(NA,5)
+  } else {
+    df.aic[i,] <- df.aic.tmp[ct,]
+    ct <- ct + 1
+  }
+}
+df.mods <- cbind(df.mods, df.aic)
+df.mods <- df.mods[order(df.mods$dAIC, na.last=TRUE),]
+df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "---"
+rownames(df.mods) <- NULL
+
+df.mods
+```
+
+```{r}
+smcope1 <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
+
+saveRDS(smcope1, file.path(write.dir, "smcope1compare.rds"))
+
+smcope1$g[[1]]
+
+smcope1$g[[8]]
+
+smcope1$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+
+```
 
 ## Sept-Feb small copepods in larval area covariate
+
+Similar approach for first pass at fall small copepods. These will lag 1.
+
+Setup
+
+```{r}
+config <- "smcopeSepFeb"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+
+input <- mm192mod$input
+
+# asapdat<- read_asap3_dat(here::here("WHAMfits/mm192/Run2_87.DAT"))
+# 
+# asap3 <- input$asap3
+
+
+# larger set of ecov setups to compare
+df.mods <- data.frame(Recruitment = c(rep(c(2,2,3,3), 2)),
+                      ecov_process = c(rep("rw",4),rep("ar1",4)),
+                      ecov_how = rep(c("none",
+                                       "controlling-lag-1-linear",
+                                       "limiting-lag-1-linear",
+                                       "masking-lag-1-linear"),2), stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+```
+
+Run models
+
+```{r, eval=FALSE}
+
+
+env.dat <- read.csv(here::here("WHAMfits/sepfebsmallcopeALLlarvareaindex.csv"), header=T)
+# 2020 is missing
+env.dat[env.dat == 0] <- NA
+
+# don't use the NA value
+use.obs <- matrix(1, ncol=1, nrow=dim(env.dat)[1])
+use.obs[39,] <- 0
+  
+
+for(m in 1:n.mods){
+  
+  ecov <- list(
+    label = "smCopeSepFeb",
+    mean = as.matrix(env.dat$her_larv_Estimate/1000000),
+    logsigma = as.matrix(log(env.dat$her_larv_SE/1000000)),
+    year = env.dat$Time,
+    use_obs = use.obs, # matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
+    #lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
+    process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
+    #where = c("recruit")[as.logical(df.mods$ecov_how[m])+1],
+    recruitment_how = as.matrix(df.mods$ecov_how[m])
+    ) # 0 = no effect, 1 = controlling, 2 = limiting
+  
+  # this isn't working, not estimating a recruitment function
+  # for the best because it will break
+  # for reference, this code should be added to attempt
+  #input206 <- set_NAA(mm192$mm192$input, NAA_re=list(recruit_model=3,sigma="rec+1",cor="ar1_a",N1_model="age-specific-fe",decouple_recruitment=TRUE))
+
+  input$data$recruit_model <- df.mods$Recruitment[m]
+  input$options$basic_info$recruit_model <- df.mods$Recruitment[m]
+  
+  ecovinput <- set_ecov(input, ecov=ecov)
+
+  mod <- fit_wham(ecovinput, do.osa = T)
+  
+  # Save model
+  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds")))
+  
+  # Plot output in new subfolder
+  plot_wham_output(mod=mod, dir.main=file.path(write.dir,df.mods$Model[m]), out.type='html')
+  
+}
+
+
+```
+
+Estimated small copepods September-February in herring larval area covariate ("ar1", m5):
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m5/plots_png/results/Ecov_1_smCopeSepFeb.png"))
+```
+
+
+Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
+
+*Ignore results from the limiting and masking models as Bev-Holt parameters aren't really being estimated.*
+
+Also nothing worked that had a recruitment effect
+
+
+```{r}
+mod.list <- paste0(write.dir, df.mods$Model,".rds")
+mods <- lapply(mod.list, readRDS)
+
+n.mods <- length(mod.list)
+
+vign2_conv <- lapply(mods, function(x) capture.output(check_convergence(x)))
+for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
+
+
+opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
+ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+df.mods$conv <- as.logical(opt_conv)
+df.mods$pdHess <- as.logical(ok_sdrep)
+df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
+
+not_conv <- !df.mods$conv | !df.mods$pdHess
+mods2 <- mods
+mods2[not_conv] <- NULL
+df.aic.tmp <- as.data.frame(compare_wham_models(mods2, table.opts=list(sort=FALSE, calc.rho=T))$tab)
+df.aic <- df.aic.tmp[FALSE,]
+ct = 1
+for(i in 1:n.mods){
+  if(not_conv[i]){
+    df.aic[i,] <- rep(NA,5)
+  } else {
+    df.aic[i,] <- df.aic.tmp[ct,]
+    ct <- ct + 1
+  }
+}
+df.mods <- cbind(df.mods, df.aic)
+df.mods <- df.mods[order(df.mods$dAIC, na.last=TRUE),]
+df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "---"
+rownames(df.mods) <- NULL
+
+df.mods
+```
+
+```{r}
+smcopelarv1 <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
+
+saveRDS(smcopelarv1, file.path(write.dir, "smcopelarv1compare.rds"))
+
+smcopelarv1$g[[1]]
+
+smcopelarv1$g[[8]]
+
+smcopelarv1$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+
+```
