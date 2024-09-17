@@ -298,23 +298,17 @@ overflow-y: auto;
 border: 1px solid #ddd;
 border-radius: 4px;
 }
-.tabset-dropdown > .nav-tabs > li.active:before {
-content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+content: "\e259";
 font-family: 'Glyphicons Halflings';
 display: inline-block;
 padding: 10px;
 border-right: 1px solid #ddd;
 }
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-content: "";
-border: none;
-}
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-content: "";
+content: "\e258";
 font-family: 'Glyphicons Halflings';
-display: inline-block;
-padding: 10px;
-border-right: 1px solid #ddd;
+border: none;
 }
 .tabset-dropdown > .nav-tabs > li.active {
 display: block;
@@ -383,6 +377,8 @@ August 2024 </a></p>
 <p><a href="https://noaa-edab.github.io/zooplanktonindex/HerringLarvaeExplore.html" target="_blank">
 Where and when are herring larvae found in the dataset? Herring larval
 filter area - July-August 2024 </a></p>
+<p><a href="https://noaa-edab.github.io/zooplanktonindex/WHAMcovariate_tests.html" target="_blank">
+Testing zooplankton covariates in WHAM - Sept 2024 </a></p>
 </div>
 
 

@@ -25,3 +25,5 @@ output: html_document
 <a href="https://noaa-edab.github.io/zooplanktonindex/CopeModCovCompare.html" target="_blank"> What difference do Day of Year covariates make in copepod models? - August 2024 </a> 
 
 <a href="https://noaa-edab.github.io/zooplanktonindex/HerringLarvaeExplore.html" target="_blank"> Where and when are herring larvae found in the dataset? Herring larval filter area - July-August 2024 </a> 
+
+<a href="https://noaa-edab.github.io/zooplanktonindex/WHAMcovariate_tests.html" target="_blank"> Testing zooplankton covariates in WHAM - Sept 2024 </a>

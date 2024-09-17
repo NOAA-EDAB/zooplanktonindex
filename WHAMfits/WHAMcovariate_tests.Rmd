@@ -5,10 +5,6 @@ date: "`r Sys.Date()`"
 output:
   html_document:
     code_fold: hide
-link-citations: yes
-csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
-bibliography: zoopindex.bib
-urlcolor: blue
 ---
 
 ```{r setup, include=FALSE}
@@ -117,6 +113,8 @@ Format ecov indices; we'll try at least 3 variants:
 *  Sep-Feb small copepods in herring larval area (food for larvae, new series not tested in boosted regression tree but developed to better match timing and area of herring larvae)
 
 The code in [WHAMinputs.R](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/WHAMinputs.R) was used to create csv files of the VAST derives zooplankton indices. Files are saved in the [WHAMfits](https://github.com/NOAA-EDAB/zooplanktonindex/tree/main/WHAMfits) folder.
+
+## Spring large copepods covariate
 
 Start with spring large copepods. Following the suggestions in [WHAM vignette 2](https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html):
 
@@ -258,8 +256,30 @@ Going to try "none", "controlling", "limiting", and "masking" (note that "maskin
 
 ```{r, eval=FALSE}
 
+config <- "largecope"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+
+input <- mm192mod$input
+
+# asapdat<- read_asap3_dat(here::here("WHAMfits/mm192/Run2_87.DAT"))
+# 
+# asap3 <- input$asap3
+
+env.dat <- read.csv(here::here("WHAMfits/springlargecopeindex.csv"), header=T)
+
+
 # larger set of ecov setups to compare
-df.mods <- data.frame(Recruitment = c(rep(2, 8)),
+df.mods <- data.frame(Recruitment = c(rep(c(2,2,3,3), 2)),
                       ecov_process = c(rep("rw",4),rep("ar1",4)),
                       ecov_how = rep(c("none",
                                        "controlling-lag-0-linear",
@@ -269,24 +289,29 @@ n.mods <- dim(df.mods)[1]
 df.mods$Model <- paste0("m",1:n.mods)
 df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
 
-for(m in 1:n.mods){
+for(m in 5:n.mods){
+  
   ecov <- list(
     label = "lgCopeSpr",
     mean = as.matrix(env.dat$her_sp_Estimate/1000000),
     logsigma = as.matrix(log(env.dat$her_sp_SE/1000000)),
     year = env.dat$Time,
     use_obs = matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
-    lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
+    #lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
     process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
     #where = c("recruit")[as.logical(df.mods$ecov_how[m])+1],
-    recruitment_how = as.matrix(df.mods$ecov_how[m])) # 0 = no effect, 1 = controlling, 2 = limiting
+    recruitment_how = as.matrix(df.mods$ecov_how[m])
+    ) # 0 = no effect, 1 = controlling, 2 = limiting
+  
+  input$data$recruit_model <- df.mods$Recruitment[m]
+  input$options$basic_info$recruit_model <- df.mods$Recruitment[m]
   
   ecovinput <- set_ecov(input, ecov=ecov)
 
   mod <- fit_wham(ecovinput, do.osa = T)
   
   # Save model
-  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds"))
+  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds")))
   
   # Plot output in new subfolder
   plot_wham_output(mod=mod, dir.main=file.path(write.dir,df.mods$Model[m]), out.type='html')
@@ -295,6 +320,92 @@ for(m in 1:n.mods){
 
 ```
 
+Check all for convergence (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
+
+```{r}
+
+config <- "largecope"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+# need this for html to work because block above running model not evaluated on knit
+df.mods <- data.frame(Recruitment = c(rep(c(2,2,3,3), 2)),
+                      ecov_process = c(rep("rw",4),rep("ar1",4)),
+                      recruitment_how = rep(c("none",
+                                       "controlling-lag-0-linear",
+                                       "limiting-lag-0-linear",
+                                       "masking-lag-0-linear"),2), stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+
+mod.list <- paste0(write.dir, df.mods$Model,".rds")
+mods <- lapply(mod.list, readRDS)
+
+n.mods <- length(mod.list)
+
+vign2_conv <- lapply(mods, function(x) capture.output(check_convergence(x)))
+for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
+```
+
+Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
+
+```{r}
+
+
+opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
+ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+df.mods$conv <- as.logical(opt_conv)
+df.mods$pdHess <- as.logical(ok_sdrep)
+df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
+
+not_conv <- !df.mods$conv | !df.mods$pdHess
+mods2 <- mods
+mods2[not_conv] <- NULL
+df.aic.tmp <- as.data.frame(compare_wham_models(mods2, table.opts=list(sort=FALSE, calc.rho=T))$tab)
+df.aic <- df.aic.tmp[FALSE,]
+ct = 1
+for(i in 1:n.mods){
+  if(not_conv[i]){
+    df.aic[i,] <- rep(NA,5)
+  } else {
+    df.aic[i,] <- df.aic.tmp[ct,]
+    ct <- ct + 1
+  }
+}
+df.mods <- cbind(df.mods, df.aic)
+df.mods <- df.mods[order(df.mods$dAIC, na.last=TRUE),]
+df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "---"
+rownames(df.mods) <- NULL
+
+df.mods
+```
+
+Outputs are nearly identical for SSB and F, but there are small differences in status determination.
+
+*The numbers in the plots are not the model numbers! They are in order by the first table above*
+
+```{r}
+lgcope1 <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
+
+saveRDS(lgcope1, file.path(write.dir, "lgcope1compare.rds"))
+
+lgcope1$g[[1]]
+
+lgcope1$g[[8]]
+
+lgcope1$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+
+```
+
+## Fall small copepods covariate
 
 
 
+## Sept-Feb small copepods in larval area covariate
