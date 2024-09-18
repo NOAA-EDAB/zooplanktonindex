@@ -34,7 +34,16 @@ In this working paper, we develop indices of large copepods in spring and small 
 
 # Methods
 
+## Zooplankton Index Development
+
+## Implementation within WHAM
+
 # Results
+
+## Zooplankton Index Development
+
+## Implementation within WHAM
+
 
 # Discussion
 
