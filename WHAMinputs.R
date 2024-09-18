@@ -83,6 +83,9 @@ WHAMinputs(infile = "pyindex/smallcopeALL_sepfeb_yrshift_500_larvarea_biascorrec
            strata = stratlook2,
            outfile = "WHAMfits/sepfebsmallcopeALLlarvareaindex.csv")
 
+# tried covariates in the zoopvolume index and none converged
+WHAMinputs(infile = "pyindex/zoopvol_spring_500_biascorrect/Index.csv",
+           outfile = "WHAMfits/springzoopvolumeindex.csv")
 
 
 # bias corrected fall results

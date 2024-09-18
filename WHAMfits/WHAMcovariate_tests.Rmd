@@ -32,6 +32,10 @@ We have also developed a herring-larvae specific small copepod index within the 
 
 So we can try at least three flavors of copepod index as a model covariate.
 
+The code that takes the output of the VAST models and makes WHAM inputs is [WHAMinputs.R](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/WHAMinputs.R)
+
+Also adding a zooplankton volume spring index to try in the place of the spring large copepods.
+
 # Methods
 
 Installed multiWHAM from the `devel` branch: https://github.com/timjmiller/wham/tree/devel
@@ -715,6 +719,160 @@ smcopelarv1$g[[1]]
 smcopelarv1$g[[8]]
 
 smcopelarv1$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+
+```
+
+## Spring zooplankton volume covariate
+
+Try the spring zooplankton with full zooplankton volume instead of just large copepods.
+
+Setup
+
+```{r}
+config <- "zoopvolSpring"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+
+input <- mm192mod$input
+
+# asapdat<- read_asap3_dat(here::here("WHAMfits/mm192/Run2_87.DAT"))
+# 
+# asap3 <- input$asap3
+
+
+# larger set of ecov setups to compare
+df.mods <- data.frame(Recruitment = c(rep(c(2,2,3,3), 2)),
+                      ecov_process = c(rep("rw",4),rep("ar1",4)),
+                      ecov_how = rep(c("none",
+                                       "controlling-lag-0-linear",
+                                       "limiting-lag-0-linear",
+                                       "masking-lag-0-linear"),2), stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+```
+
+Run models
+
+```{r, eval=FALSE}
+
+
+env.dat <- read.csv(here::here("WHAMfits/springzoopvolumeindex.csv"), header=T)
+
+# units of zoop volume are ml so lets convert to liters?
+
+for(m in 1:n.mods){
+  
+  ecov <- list(
+    label = "zoopvolSpr",
+    mean = as.matrix(env.dat$her_sp_Estimate/1000),
+    logsigma = as.matrix(log(env.dat$her_sp_SE/1000)),
+    year = env.dat$Time,
+    use_obs = matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
+    #lag = 0, # postlarval and juvenile food in year t affects recruitment in year t
+    process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
+    #where = c("recruit")[as.logical(df.mods$ecov_how[m])+1],
+    recruitment_how = as.matrix(df.mods$ecov_how[m])
+    ) # 0 = no effect, 1 = controlling, 2 = limiting
+  
+  # this isn't working, not estimating a recruitment function
+  # for the best because it will break
+  # for reference, this code should be added to attempt
+  #input <- set_NAA(mm192$mm192$input, NAA_re=list(recruit_model=3,sigma="rec+1",cor="ar1_a",N1_model="age-specific-fe",decouple_recruitment=TRUE))
+  input$data$recruit_model <- df.mods$Recruitment[m]
+  input$options$basic_info$recruit_model <- df.mods$Recruitment[m]
+  
+  ecovinput <- set_ecov(input, ecov=ecov)
+
+  mod <- fit_wham(ecovinput, do.osa = T)
+  
+  # Save model
+  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds")))
+  
+  # Plot output in new subfolder
+  plot_wham_output(mod=mod, dir.main=file.path(write.dir,df.mods$Model[m]), out.type='html')
+  
+}
+
+
+```
+
+Estimated zooplankton volume covariate ("ar1", m5):
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m5/plots_png/results/Ecov_1_zoopvolSpr.png"))
+```
+
+
+Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
+
+*Ignore results from the limiting and masking models as Bev-Holt parameters aren't really being estimated.*
+
+Also nothing worked that had a recruitment effect
+
+```{r}
+# only take those that are there, but doesnt work with rest of code
+#mod.list <- paste0(list.dirs(write.dir, recursive = FALSE), ".rds")
+
+mod.list <- paste0(write.dir, df.mods$Model,".rds")
+mods <- lapply(mod.list, readRDS)
+
+n.mods <- length(mod.list)
+
+vign2_conv <- lapply(mods, function(x) capture.output(check_convergence(x)))
+for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
+
+
+opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
+ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+df.mods$conv <- as.logical(opt_conv)
+df.mods$pdHess <- as.logical(ok_sdrep)
+df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
+
+not_conv <- !df.mods$conv | !df.mods$pdHess
+mods2 <- mods
+mods2[not_conv] <- NULL
+df.aic.tmp <- as.data.frame(compare_wham_models(mods2, table.opts=list(sort=FALSE, calc.rho=T))$tab)
+df.aic <- df.aic.tmp[FALSE,]
+ct = 1
+for(i in 1:n.mods){
+  if(not_conv[i]){
+    df.aic[i,] <- rep(NA,5)
+  } else {
+    df.aic[i,] <- df.aic.tmp[ct,]
+    ct <- ct + 1
+  }
+}
+df.mods <- cbind(df.mods, df.aic)
+df.mods <- df.mods[order(df.mods$dAIC, na.last=TRUE),]
+df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "---"
+rownames(df.mods) <- NULL
+
+df.mods
+```
+
+```{r}
+zoopvol <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
+
+saveRDS(zoopvol, file.path(write.dir, "zoopvolcompare.rds"))
+
+zoopvol$g[[1]]
+
+zoopvol$g[[8]]
+
+zoopvol$g[[9]]
 
 knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
 
