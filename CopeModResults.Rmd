@@ -21,6 +21,7 @@ library(here)
 library(DT)
 library(ggiraph)
 library(patchwork)
+library(FishStatsUtils)
 ```
 
 # Introduction
@@ -334,6 +335,7 @@ stratlook <- data.frame(Stratum = c("Stratum_1",
                                     "GOM",
                                     "SS"))
 
+
 # function to apply extracting info
 getmodindex <- function(d.name){
   # read settings
@@ -353,7 +355,18 @@ getmodindex <- function(d.name){
   return(out)
 }
 
-modcompareindex <- purrr::map_dfr(moddirs, purrr::possibly(getmodindex, otherwise = NULL))
+# lets only look at indices for converged models
+modcompare_conv <- modselect |>
+  dplyr::ungroup() |>
+  dplyr::filter(converged2 == "likely") |>
+  dplyr::select(modname) |>
+  as.vector() |>
+  unname() |>
+  unlist()
+
+moddirs_conv <-  moddirs[grepl(sprintf("\\.*(%s)$", paste(modcompare_conv, collapse = '|')), moddirs)]
+
+modcompareindex <- purrr::map_dfr(moddirs_conv, purrr::possibly(getmodindex, otherwise = NULL))
 
 splitoutput <- modcompareindex %>%
   dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
@@ -481,7 +494,7 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs[str_detect(moddirs, "calfin")]){
+for(d.name in moddirs_conv[str_detect(moddirs_conv, "calfin")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -508,7 +521,7 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs[str_detect(moddirs, "lgcopeALL")]){
+for(d.name in moddirs_conv[str_detect(moddirs_conv, "lgcopeALL")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -535,7 +548,7 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs[str_detect(moddirs, "smallcopeALL")]){
+for(d.name in moddirs_conv[str_detect(moddirs_conv, "smallcopeALL")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -562,7 +575,34 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs[str_detect(moddirs, "smallcopeSOE")]){
+for(d.name in moddirs_conv[str_detect(moddirs_conv, "smallcopeSOE")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  if(file.exists(paste0(d.name, "/ln_density-predicted.png"))){
+    cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  }
+  cat("\n\n")
+  
+}
+```
+
+
+## Zooplankton volume
+
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "zoopvol", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Zooplankton volume") 
+```
+
+### Density estimates
+
+```{r, results = "asis"}
+for(d.name in moddirs_conv[str_detect(moddirs_conv, "zoopvol")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
