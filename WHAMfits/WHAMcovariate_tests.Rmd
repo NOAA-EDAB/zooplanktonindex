@@ -925,7 +925,7 @@ df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model
 
 ```
 
-Run models with different data entry options
+Run models with different data entry options. Don't do it in the Rmd, do it with [a script](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/WHAMfits/WHAMruns_lgcopeSp.R). 
 
 ```{r, eval=FALSE}
 
@@ -938,8 +938,10 @@ for(m in 1:n.mods){
                     as.matrix(log(env.dat$her_sp_Estimate)),
                     TRUE ~as.matrix(env.dat$her_sp_Estimate/1000000))
   
-  ecovsig <- if(df.mods$ecovdat[m] %in% c("logmean-logsig", "meanmil-logsigmil1")){
+  ecovsig <- if(df.mods$ecovdat[m] %in% c("logmean-logsig")){
     as.matrix(log(env.dat$her_sp_SE))
+  }else if(df.mods$ecovdat[m] %in% c("meanmil-logsigmil")){
+    as.matrix(log(env.dat$her_sp_SE/1000000))
   }else{"est_1"}
   
   ecov <- list(
@@ -967,18 +969,30 @@ for(m in 1:n.mods){
 
 ```
 
-Estimated large copepods all Jan-June (Spring) covariate ("ar1", m5):
+Estimated large copepods all Jan-June (Spring) covariate (log scale, "ar1", WHAM "est_1" sigma, m10):
 
 ```{r}
-knitr::include_graphics(here::here(write.dir, "m4/plots_png/results/Ecov_1_lgCopeSpring2.png"))
+knitr::include_graphics(here::here(write.dir, "m10/plots_png/results/Ecov_1_lgCopeSpring2.png"))
+```
+Estimated large copepods all Jan-June (Spring) covariate (log scale, "rw", WHAM "est_1" sigma, m2):
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m2/plots_png/results/Ecov_1_lgCopeSpring2.png"))
 ```
 
+Estimated large copepods all Jan-June (Spring) covariate (natural scale in millions with VAST SE in millions, "ar1", m11):
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m11/plots_png/results/Ecov_1_lgCopeSpring2.png"))
+```
+
+Estimated large copepods all Jan-June (Spring) covariate (natural scale in millions with VAST SE in millions, "rw", m3):
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m3/plots_png/results/Ecov_1_lgCopeSpring2.png"))
+```
 
 Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
-
-*Ignore results from the limiting and masking models as Bev-Holt parameters aren't really being estimated.*
-
-Also nothing worked that had a recruitment effect
 
 ```{r}
 mod.list <- paste0(write.dir, df.mods$Model,".rds")
