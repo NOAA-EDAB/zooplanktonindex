@@ -877,3 +877,159 @@ zoopvol$g[[9]]
 knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
 
 ```
+
+# Alternative WHAM runs
+
+1.  Try using log of zooplankton index and/or letting WHAM estimate the logsigma.
+1.  Would different lags be appropriate if the food affects spawning adults rather than larvae? (accidentally done as lag1)
+
+## Spring large copepods covariate
+
+
+Setup
+
+```{r}
+config <- "lgcopeSpring2"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+
+input <- mm192mod$input
+
+# asapdat<- read_asap3_dat(here::here("WHAMfits/mm192/Run2_87.DAT"))
+# 
+# asap3 <- input$asap3
+
+
+# larger set of ecov setups to compare
+df.mods <- data.frame(Recruitment = c(rep(2, 16)),
+                      ecov_process = c(rep("rw",8),rep("ar1",8)),
+                      ecov_how = c(rep("none",4), 
+                                     rep("controlling-lag-0-linear",4)),
+                      ecovdat = rep(c("logmean-logsig", 
+                                      "logmean-est_1",
+                                      "meanmil-logsigmil",
+                                      "meanmil-est_1"),4),
+                      stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+```
+
+Run models with different data entry options
+
+```{r, eval=FALSE}
+
+
+env.dat <- read.csv(here::here("WHAMfits/springlargecopeindex.csv"), header=T)
+
+for(m in 1:n.mods){
+  
+  ecovdat <- dplyr::case_when(df.mods$ecovdat[m] %in% c("logmean-logsig", "logmean-est_1") ~
+                    as.matrix(log(env.dat$her_sp_Estimate)),
+                    TRUE ~as.matrix(env.dat$her_sp_Estimate/1000000))
+  
+  ecovsig <- if(df.mods$ecovdat[m] %in% c("logmean-logsig", "meanmil-logsigmil1")){
+    as.matrix(log(env.dat$her_sp_SE))
+  }else{"est_1"}
+  
+  ecov <- list(
+    label = "lgCopeSpring2",
+    mean = ecovdat,
+    logsigma = ecovsig, 
+    year = env.dat$Time,
+    use_obs =  matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
+    process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
+    recruitment_how = as.matrix(df.mods$ecov_how[m])
+    ) 
+  
+  ecovinput <- set_ecov(input, ecov=ecov)
+
+  mod <- fit_wham(ecovinput, do.osa = T)
+  
+  # Save model
+  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds")))
+  
+  # Plot output in new subfolder
+  plot_wham_output(mod=mod, dir.main=file.path(write.dir,df.mods$Model[m]), out.type='html')
+  
+}
+
+
+```
+
+Estimated large copepods all Jan-June (Spring) covariate ("ar1", m5):
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m4/plots_png/results/Ecov_1_lgCopeSpring2.png"))
+```
+
+
+Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
+
+*Ignore results from the limiting and masking models as Bev-Holt parameters aren't really being estimated.*
+
+Also nothing worked that had a recruitment effect
+
+```{r}
+mod.list <- paste0(write.dir, df.mods$Model,".rds")
+mods <- lapply(mod.list, readRDS)
+
+n.mods <- length(mod.list)
+
+vign2_conv <- lapply(mods, function(x) capture.output(check_convergence(x)))
+for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
+
+
+opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
+ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+df.mods$conv <- as.logical(opt_conv)
+df.mods$pdHess <- as.logical(ok_sdrep)
+df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
+
+not_conv <- !df.mods$conv | !df.mods$pdHess
+mods2 <- mods
+mods2[not_conv] <- NULL
+df.aic.tmp <- as.data.frame(compare_wham_models(mods2, table.opts=list(sort=FALSE, calc.rho=T))$tab)
+df.aic <- df.aic.tmp[FALSE,]
+ct = 1
+for(i in 1:n.mods){
+  if(not_conv[i]){
+    df.aic[i,] <- rep(NA,5)
+  } else {
+    df.aic[i,] <- df.aic.tmp[ct,]
+    ct <- ct + 1
+  }
+}
+df.mods <- cbind(df.mods, df.aic)
+df.mods <- df.mods[order(df.mods$dAIC, na.last=TRUE),]
+df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "---"
+rownames(df.mods) <- NULL
+
+df.mods
+```
+
+```{r}
+lgcope2 <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
+
+saveRDS(lgcope2, file.path(write.dir, "lgCopeSpring2compare.rds"))
+
+lgcope2$g[[1]]
+
+lgcope2$g[[8]]
+
+lgcope2$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+
+```
+

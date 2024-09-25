@@ -1,5 +1,5 @@
 ---
-title: 'Working Paper: Copepod Indices'
+title: 'Working Paper: Developing zooplankton indices in VAST'
 author: "Sarah Gaichas"
 date: "`r Sys.Date()`"
 output:
@@ -34,16 +34,7 @@ In this working paper, we develop indices of large copepods in spring and small 
 
 # Methods
 
-## Zooplankton Index Development
-
-## Implementation within WHAM
-
 # Results
-
-## Zooplankton Index Development
-
-## Implementation within WHAM
-
 
 # Discussion
 
