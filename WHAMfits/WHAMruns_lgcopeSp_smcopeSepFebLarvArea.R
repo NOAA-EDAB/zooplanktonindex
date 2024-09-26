@@ -6,7 +6,11 @@ library(tidyverse)
 library(here)
 library(wham)
 
-config <- "smcopeSepFeb2"
+# Large copepods Jan-June (Spring) index options
+
+## Setup
+
+config <- "lgcopeSpring_smcopeSepFeb"
 
 # name the model directory
 name <- paste0("mm192_", config)
@@ -21,12 +25,11 @@ mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
 
 input <- mm192mod$input
 
-
 # larger set of ecov setups to compare
 df.mods <- data.frame(Recruitment = c(rep(2, 16)),
                       ecov_process = c(rep("rw",8),rep("ar1",8)),
                       ecov_how = c(rep("none",4), 
-                                   rep("controlling-lag-1-linear",4)),
+                                   rep("controlling-lag-0-linear",4)),
                       ecovdat = rep(c("logmean-logsig", 
                                       "logmean-est_1",
                                       "meanmil-logsigmil",
@@ -37,38 +40,43 @@ df.mods$Model <- paste0("m",1:n.mods)
 df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
 
 
-## Read environmental index
+## Read environmental indices
 
-env.dat <- read.csv(here::here("WHAMfits/sepfebsmallcopeALLlarvareaindex.csv"), header=T)
+lgcope.dat <- read.csv(here::here("WHAMfits/springlargecopeindex.csv"), header=T)
 
-# 2020 is missing
-env.dat[env.dat == 0] <- NA
-
-# don't use the NA value
-use.obs <- matrix(1, ncol=1, nrow=dim(env.dat)[1])
-use.obs[39,] <- 0
-
+smcope.dat <- read.csv(here::here("WHAMfits/sepfebsmallcopeALLlarvareaindex.csv"), header=T)
 
 ## Run model
 
 for(m in 1:n.mods){
   
-  ecovdat <- dplyr::case_when(df.mods$ecovdat[m] %in% c("logmean-logsig", "logmean-est_1") ~
-                                as.matrix(log(env.dat$her_larv_Estimate)),
-                              TRUE ~as.matrix(env.dat$her_larv_Estimate/1000000))
+  lgcopedat <- dplyr::case_when(df.mods$ecovdat[m] %in% c("logmean-logsig", "logmean-est_1") ~
+                                as.matrix(log(lgcope.dat$her_sp_Estimate)),
+                              TRUE ~as.matrix(lgcope.dat$her_sp_Estimate/1000000))
   
-  ecovsig <- if(df.mods$ecovdat[m] %in% c("logmean-logsig")){
-    as.matrix(log(env.dat$her_larv_SE))
+  lgcopesig <- if(df.mods$ecovdat[m] %in% c("logmean-logsig")){
+    as.matrix(log(lgcope.dat$her_sp_SE))
   }else if(df.mods$ecovdat[m] %in% c("meanmil-logsigmil")){
-    as.matrix(log(env.dat$her_larv_SE/1000000))
+    as.matrix(log(lgcope.dat$her_sp_SE/1000000))
   }else{"est_1"}
   
+  smcopedat <- dplyr::case_when(df.mods$ecovdat[m] %in% c("logmean-logsig", "logmean-est_1") ~
+                                  as.matrix(log(lgcope.dat$her_larv_Estimate)),
+                                TRUE ~as.matrix(lgcope.dat$her_larv_Estimate/1000000))
+  
+  smcopesig <- if(df.mods$ecovdat[m] %in% c("logmean-logsig")){
+    as.matrix(log(lgcope.dat$her_larv_SE))
+  }else if(df.mods$ecovdat[m] %in% c("meanmil-logsigmil")){
+    as.matrix(log(lgcope.dat$her_larv_SE/1000000))
+  }else{"est_1"}
+  
+  
   ecov <- list(
-    label = "smCopeSepFeb2",
+    label = "lgCopeSpring2",
     mean = ecovdat,
     logsigma = ecovsig, 
     year = env.dat$Time,
-    use_obs =  use.obs, #matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
+    use_obs =  matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
     process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
     recruitment_how = as.matrix(df.mods$ecov_how[m])
   ) 
