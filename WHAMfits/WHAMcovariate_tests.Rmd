@@ -1296,11 +1296,27 @@ for(m in 1:n.mods){
 
 ```
 
-
 Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
+
+Two models ran successfully with an ecov on (log scale covariate, "rw", WHAM "est_1" sigma, m6), this fits best, better than with ecov off:
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m6/plots_png/results/Ecov_1_smCopeSepFeb2.png"))
+```
+
+
+and  ecov on (log scale covariate, "ar1", WHAM "est_1" sigma, m14), this fits second best, better than with ecov off:
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m14/plots_png/results/Ecov_1_smCopeSepFeb2.png"))
+```
+
 
 ```{r}
 mod.list <- paste0(write.dir, df.mods$Model,".rds")
+
+mod.list <- mod.list[-16] # last model crashed no output saved
+
 mods <- lapply(mod.list, readRDS)
 
 n.mods <- length(mod.list)
@@ -1311,6 +1327,9 @@ for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
 
 opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
 ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+
+df.mods <- df.mods[-16,]
+
 df.mods$conv <- as.logical(opt_conv)
 df.mods$pdHess <- as.logical(ok_sdrep)
 df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
@@ -1336,3 +1355,39 @@ rownames(df.mods) <- NULL
 
 df.mods
 ```
+```{r}
+smcopelarv2 <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
+
+saveRDS(smcopelarv2, file.path(write.dir, "smCopeSepFeb2compare.rds"))
+
+smcopelarv2$g[[1]]
+
+smcopelarv2$g[[8]]
+
+smcopelarv2$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+
+```
+
+Only compare logmean-est_1 fits
+
+```{r}
+
+mod.list <- paste0(write.dir, c("m6", "m14", "m2", "m10"),".rds")
+mods <- lapply(mod.list, readRDS)
+names(mods) <- c("m6", "m14", "m2", "m10")
+
+smcopelarv2_best4 <- compare_wham_models(mods, fdir = write.dir)
+
+saveRDS(smcopelarv2_best4, file.path(write.dir, "smCopeSepFeb2compare_best4.rds"))
+
+smcopelarv2_best4$g[[1]]
+
+smcopelarv2_best4$g[[8]]
+
+smcopelarv2_best4$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+```
+
