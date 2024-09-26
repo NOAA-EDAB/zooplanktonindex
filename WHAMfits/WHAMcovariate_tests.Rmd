@@ -1391,3 +1391,18 @@ smcopelarv2_best4$g[[9]]
 knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
 ```
 
+## Try two covariates: lgCopeSpring lag 0 + smCopeSepFeb lag 1
+
+Possibly insane. May not work?  But these are the top two drivers in Adelle's boosted regression tree.
+
+The reason to try more than one is that probably just one factor doesn't "control" recruitment.
+
+Setup
+
+```{r}
+
+```
+
+
+
+
