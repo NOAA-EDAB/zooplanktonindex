@@ -1261,13 +1261,13 @@ use.obs[39,] <- 0
 for(m in 1:n.mods){
   
   ecovdat <- dplyr::case_when(df.mods$ecovdat[m] %in% c("logmean-logsig", "logmean-est_1") ~
-                                as.matrix(log(env.dat$her_fa_Estimate)),
-                              TRUE ~as.matrix(env.dat$her_fa_Estimate/1000000))
+                                as.matrix(log(env.dat$her_larv_Estimate)),
+                              TRUE ~as.matrix(env.dat$her_larv_Estimate/1000000))
   
   ecovsig <- if(df.mods$ecovdat[m] %in% c("logmean-logsig")){
-    as.matrix(log(env.dat$her_fa_SE))
+    as.matrix(log(env.dat$her_larv_SE))
   }else if(df.mods$ecovdat[m] %in% c("meanmil-logsigmil")){
-    as.matrix(log(env.dat$her_fa_SE/1000000))
+    as.matrix(log(env.dat$her_larv_SE/1000000))
   }else{"est_1"}
   
   ecov <- list(
@@ -1298,19 +1298,11 @@ for(m in 1:n.mods){
 
 Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
 
-Two models ran successfully with an ecov on (log scale covariate, "rw", WHAM "est_1" sigma, m6), this fits best, better than with ecov off:
-
-```{r}
-knitr::include_graphics(here::here(write.dir, "m6/plots_png/results/Ecov_1_smCopeSepFeb2.png"))
-```
-
-
-and  ecov on (log scale covariate, "ar1", WHAM "est_1" sigma, m14), this fits second best, better than with ecov off:
+The model with ecov on (log scale covariate, "ar1", WHAM "est_1" sigma, m14), fits best, better than with ecov off for both ar1 and rw:
 
 ```{r}
 knitr::include_graphics(here::here(write.dir, "m14/plots_png/results/Ecov_1_smCopeSepFeb2.png"))
 ```
-
 
 ```{r}
 mod.list <- paste0(write.dir, df.mods$Model,".rds")
@@ -1370,11 +1362,49 @@ knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_ko
 
 ```
 
-Only compare logmean-est_1 fits
+Only compare logmean-est_1 fits that worked
 
 ```{r}
 
-mod.list <- paste0(write.dir, c("m6", "m14", "m2", "m10"),".rds")
+mod.list <- paste0(write.dir, c("m14", "m2", "m10"),".rds")
+mods <- lapply(mod.list, readRDS)
+names(mods) <- c("m14", "m2", "m10")
+
+smcopelarv2_best4 <- compare_wham_models(mods, fdir = write.dir)
+
+saveRDS(smcopelarv2_best4, file.path(write.dir, "smCopeSepFeb2compare_best3.rds"))
+
+smcopelarv2_best4$g[[1]]
+
+smcopelarv2_best4$g[[8]]
+
+smcopelarv2_best4$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+```
+
+## Small copepods Sep-Feb in the fall herring survey strata also worked, maybe better
+
+Two models ran successfully with an ecov on (log scale covariate, "rw", WHAM "est_1" sigma, m6), this fits best, better than with ecov off:
+
+```{r}
+write.dir <- here::here("WHAMfits/mm192_smcopeSepFeb2_fallstrata")
+
+knitr::include_graphics(here::here(write.dir, "m6/plots_png/results/Ecov_1_smCopeSepFeb2.png"))
+```
+
+
+and  ecov on (log scale covariate, "ar1", WHAM "est_1" sigma, m14), this fits second best, better than with ecov off:
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "m14/plots_png/results/Ecov_1_smCopeSepFeb2.png"))
+```
+
+Only compare logmean-est_1 fits that worked
+
+```{r}
+
+mod.list <- paste0(write.dir, "/", c("m6", "m14", "m2", "m10"),".rds")
 mods <- lapply(mod.list, readRDS)
 names(mods) <- c("m6", "m14", "m2", "m10")
 
@@ -1400,8 +1430,217 @@ The reason to try more than one is that probably just one factor doesn't "contro
 Setup
 
 ```{r}
+config <- "lgcopeSpring_smcopeSepFeb"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+
+input <- mm192mod$input
+
+# larger set of ecov setups to compare
+df.mods <- data.frame(Recruitment = c(rep(2, 16)),
+                      ecov_process = c(rep("rw",8),rep("ar1",8)),
+                      ecov_how = c(rep("none" ,4), 
+                                   rep("controlling-lag-0-linear",4)),
+                      ecovdat = rep(c("logmean-logsig", 
+                                      "logmean-est_1",
+                                      "meanmil-logsigmil",
+                                      "meanmil-est_1"),4),
+                      stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+# make smaller
+df.mods <- data.frame(Recruitment = c(rep(2, 4)),
+                      ecov_process = c(rep(c("rw","ar"),2)),
+                      ecov_how = c(rep("none" ,2), 
+                                   rep("controlling-lag-0-linear",2)),
+                      ecovdat = rep("logmean-est_1",4),
+                      stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+
+## Read environmental indices
+
+lgcope.dat <- read.csv(here::here("WHAMfits/springlargecopeindex.csv"), header=T)
+
+smcope.dat <- read.csv(here::here("WHAMfits/sepfebsmallcopeALLlarvareaindex.csv"), header=T)
+
+# 2020 is missing for fall small copepods
+smcope.dat[smcope.dat == 0] <- NA
+
+# don't use the NA value
+use.obs <- matrix(1, ncol=1, nrow=dim(smcope.dat)[1])
+use.obs[39,] <- 0
+
 
 ```
+
+Run the models, the loop didnt work, only doing the 4 above, run from [this script]()
+
+```{r, eval=FALSE}
+## Try just running a model with both turned off and both turned on, log scale and est_1
+## having issues getting the correct class of objects in this loop
+
+#1: rw none logmean-est1 both
+#2: ar1 none logmean-est1 both
+
+#3: rw controlling-lag-0-linear and controlling-lag-1-linear logmean-est1 both
+#4: ar1 controlling-lag-0-linear and controlling-lag-1-linear logmean-est1 both
+
+ecov1 <- list(
+  label = c("lgCopeSpring2", "smCopeSepFeb2"),
+  mean = cbind(as.matrix(log(lgcope.dat$her_sp_Estimate)), 
+               as.matrix(log(smcope.dat$her_larv_Estimate))),
+  logsigma = c("est_1", "est_1"), 
+  year = lgcope.dat$Time,
+  use_obs =  cbind(matrix(1, ncol=1, nrow=dim(lgcope.dat)[1]), use.obs), # use all obs (all = 1)
+  process_model = c("rw","rw"), # "rw" or "ar1"
+  recruitment_how = rbind(as.matrix("none"), as.matrix("none"))
+) 
+
+ecov2 <- list(
+  label = c("lgCopeSpring2", "smCopeSepFeb2"),
+  mean = cbind(as.matrix(log(lgcope.dat$her_sp_Estimate)), 
+               as.matrix(log(smcope.dat$her_larv_Estimate))),
+  logsigma = c("est_1", "est_1"), 
+  year = lgcope.dat$Time,
+  use_obs =  cbind(matrix(1, ncol=1, nrow=dim(lgcope.dat)[1]), use.obs), # use all obs (all = 1)
+  process_model = c("ar1","ar1"), # "rw" or "ar1"
+  recruitment_how = rbind(as.matrix("none"), as.matrix("none"))
+) 
+
+ecov3 <- list(
+  label = c("lgCopeSpring2", "smCopeSepFeb2"),
+  mean = cbind(as.matrix(log(lgcope.dat$her_sp_Estimate)), 
+               as.matrix(log(smcope.dat$her_larv_Estimate))),
+  logsigma = c("est_1", "est_1"), 
+  year = lgcope.dat$Time,
+  use_obs =  cbind(matrix(1, ncol=1, nrow=dim(lgcope.dat)[1]), use.obs), # use all obs (all = 1)
+  process_model = c("rw","rw"), # "rw" or "ar1"
+  recruitment_how = rbind(as.matrix("controlling-lag-0-linear"), as.matrix("controlling-lag-1-linear"))
+) 
+
+ecov4 <- list(
+  label = c("lgCopeSpring2", "smCopeSepFeb2"),
+  mean = cbind(as.matrix(log(lgcope.dat$her_sp_Estimate)), 
+               as.matrix(log(smcope.dat$her_larv_Estimate))),
+  logsigma = c("est_1", "est_1"), 
+  year = lgcope.dat$Time,
+  use_obs =  cbind(matrix(1, ncol=1, nrow=dim(lgcope.dat)[1]), use.obs), # use all obs (all = 1)
+  process_model = c("ar1","ar1"), # "rw" or "ar1"
+  recruitment_how = rbind(as.matrix("controlling-lag-0-linear"), as.matrix("controlling-lag-1-linear"))
+)
+
+# run mod 1
+ecovinput <- set_ecov(input, ecov=ecov1)
+
+mod <- fit_wham(ecovinput, do.osa = T)
+
+saveRDS(mod, file.path(write.dir, "m1.rds"))
+
+plot_wham_output(mod=mod, dir.main=file.path(write.dir,"m1"), out.type='html')
+
+# run mod 2
+ecovinput <- set_ecov(input, ecov=ecov2)
+
+mod <- fit_wham(ecovinput, do.osa = T)
+
+saveRDS(mod, file.path(write.dir, "m2.rds"))
+
+plot_wham_output(mod=mod, dir.main=file.path(write.dir,"m2"), out.type='html')
+
+# run mod 3
+ecovinput <- set_ecov(input, ecov=ecov3)
+
+mod <- fit_wham(ecovinput, do.osa = T)
+
+saveRDS(mod, file.path(write.dir, "m3.rds"))
+
+plot_wham_output(mod=mod, dir.main=file.path(write.dir,"m3"), out.type='html')
+
+# run mod 4
+ecovinput <- set_ecov(input, ecov=ecov4)
+
+mod <- fit_wham(ecovinput, do.osa = T)
+
+saveRDS(mod, file.path(write.dir, "m4.rds"))
+
+plot_wham_output(mod=mod, dir.main=file.path(write.dir,"m4"), out.type='html')
+
+```
+
+Compare mods
+
+```{r}
+mod.list <- paste0(write.dir, df.mods$Model,".rds")
+
+mods <- lapply(mod.list, readRDS)
+
+n.mods <- length(mod.list)
+
+vign2_conv <- lapply(mods, function(x) capture.output(check_convergence(x)))
+for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
+
+
+opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
+ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+
+df.mods <- df.mods[-16,]
+
+df.mods$conv <- as.logical(opt_conv)
+df.mods$pdHess <- as.logical(ok_sdrep)
+df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
+
+not_conv <- !df.mods$conv | !df.mods$pdHess
+mods2 <- mods
+mods2[not_conv] <- NULL
+df.aic.tmp <- as.data.frame(compare_wham_models(mods2, table.opts=list(sort=FALSE, calc.rho=T))$tab)
+df.aic <- df.aic.tmp[FALSE,]
+ct = 1
+for(i in 1:n.mods){
+  if(not_conv[i]){
+    df.aic[i,] <- rep(NA,5)
+  } else {
+    df.aic[i,] <- df.aic.tmp[ct,]
+    ct <- ct + 1
+  }
+}
+df.mods <- cbind(df.mods, df.aic)
+df.mods <- df.mods[order(df.mods$dAIC, na.last=TRUE),]
+df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "---"
+rownames(df.mods) <- NULL
+
+df.mods
+```
+
+Compare
+
+```{r}
+lgandsmall <- compare_wham_models(mods, fdir = write.dir)
+
+saveRDS(lgandsmall, file.path(write.dir, "smCopeSepFeb2compare_best3.rds"))
+
+lgandsmall$g[[1]]
+
+lgandsmall$g[[8]]
+
+lgandsmall$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+```
+The ar1 models have identical fits with and without the covariates. Interesting. Maybe didnt work?
 
 
 
