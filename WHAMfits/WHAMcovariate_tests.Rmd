@@ -1787,7 +1787,7 @@ df.mods
 
 larvtemp <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
 
-saveRDS(larvtemp, file.path(write.dir, "larvtemp.rds"))
+saveRDS(larvtemp, file.path(write.dir, "larvtempduration.rds"))
 
 larvtemp$g[[1]]
 
@@ -1799,26 +1799,6 @@ knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_ko
 
 ```
 
-Only compare logmean-est_1 fits that worked
-
-```{r}
-
-mod.list <- paste0(write.dir, c("m14", "m2", "m10"),".rds")
-mods <- lapply(mod.list, readRDS)
-names(mods) <- c("m14", "m2", "m10")
-
-smcopelarv2_best4 <- compare_wham_models(mods, fdir = write.dir)
-
-saveRDS(smcopelarv2_best4, file.path(write.dir, "smCopeSepFeb2compare_best3.rds"))
-
-smcopelarv2_best4$g[[1]]
-
-smcopelarv2_best4$g[[8]]
-
-smcopelarv2_best4$g[[9]]
-
-knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
-```
 
 
 
