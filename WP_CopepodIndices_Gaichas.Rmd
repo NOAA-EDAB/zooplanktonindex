@@ -34,6 +34,54 @@ In this working paper, we develop indices of large copepods in spring and small 
 
 # Methods
 
+How many samples
+
+```{r}
+
+herringfood_stn <- readRDS(here::here("data/herringfood_stn_all_OISST.rds"))
+
+# make SST column that uses surftemp unless missing or 0
+
+herringfood_stn <- herringfood_stn %>%
+  dplyr::mutate(sstfill = ifelse((is.na(sfc_temp)|sfc_temp==0), oisst, sfc_temp),
+                season_larv = month %in% c(1:2, 9:12))
+
+seasontot <- herringfood_stn |> 
+  dplyr::group_by(season_ng) |>
+  dplyr::summarise(totstn = n(),
+                   across(c(calfin_100m3,
+                            lgcopeALL_100m3,
+                            smallcopeALL_100m3,
+                            cluhar_100m3,
+                            euph_100m3,
+                            volume_100m3
+                            ), ~ sum(.x != 0, na.rm = TRUE)))
+
+season4tot <- herringfood_stn |> 
+  dplyr::group_by(season_4) |>
+  dplyr::summarise(totstn = n(),
+                   across(c(calfin_100m3,
+                            lgcopeALL_100m3,
+                            smallcopeALL_100m3,
+                            cluhar_100m3,
+                            euph_100m3,
+                            volume_100m3
+                            ), ~ sum(.x != 0, na.rm = TRUE)))
+
+larvtot <- herringfood_stn |> 
+  dplyr::group_by(season_larv) |>
+  dplyr::summarise(totstn = n(),
+                   across(c(calfin_100m3,
+                            lgcopeALL_100m3,
+                            smallcopeALL_100m3,
+                            cluhar_100m3,
+                            euph_100m3,
+                            volume_100m3
+                            ), ~ sum(.x != 0, na.rm = TRUE)))
+
+```
+
+
 # Results
 
 # Discussion
