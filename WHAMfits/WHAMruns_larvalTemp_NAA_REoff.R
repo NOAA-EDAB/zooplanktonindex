@@ -10,7 +10,7 @@ library(wham)
 
 ## Setup
 
-config <- "LarvalTempDuration"
+config <- "LarvalTempDuration_NAA_REoff"
 
 # name the model directory
 name <- paste0("mm192_", config)
@@ -21,7 +21,7 @@ if(!dir.exists(write.dir)) {
   dir.create(write.dir)
 }
 
-mm192mod <- readRDS(here::here("WHAMfits/mm192/mm192_meanrecpar.rds"))
+mm192mod <- readRDS(here::here("WHAMfits/mm192_nonaa/mm192_nonaa.rds"))
 
 input <- mm192mod$input
 

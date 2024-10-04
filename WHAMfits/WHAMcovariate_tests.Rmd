@@ -1800,5 +1800,33 @@ knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_ko
 ```
 
 
+# Cumulative effects
+
+## Try the haddock predation plus the larval optimal temperature duration
+
+Zooplankton indices are fitting, but they are fitting with the opposite direction we would expect; slope parameters are negative, suggesting an inverse relationship with herring recruitment. We expected food to have a positive effect on herring recruitment.
+
+However, the influence estimated for haddock predation and larval optimal temperature were aligned with our hyotheses.
+
+So, setup the model
+
+```{r}
+
+```
+
+Run models
+
+using the script, copied here for referene
+
+```{r}
+
+```
+
+
+Compare models
+
+```{r}
+
+```
 
 
