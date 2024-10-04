@@ -1690,7 +1690,7 @@ df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model
 
 ```
 
-Run models (not here, code for reference but using [this script](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/WHAMfits/WHAMruns_smcopeSepFebLarvArea.R))
+Run models (not here, code for reference but using [this script](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/WHAMfits/WHAMruns_larvalTemp.R))
 
 ```{r, eval=FALSE}
 
@@ -1735,10 +1735,10 @@ for(m in 1:n.mods){
 
 Compare models (from https://timjmiller.github.io/wham/articles/ex2_CPI_recruitment.html)
 
-The model with ecov on (log scale covariate, "ar1", WHAM "est_1" sigma, m14), fits best, better than with ecov off for both ar1 and rw:
+The model with ecov on (log scale covariate, "rw", WHAM "est_1" sigma, m4), fits best, better than with ecov off for both ar1 and rw:
 
 ```{r}
-knitr::include_graphics(here::here(write.dir, "mX/plots_png/results/Ecov_1_LarvalTemperature.png"))
+knitr::include_graphics(here::here(write.dir, "m4/plots_png/results/Ecov_1_LarvalTempDuration.png"))
 ```
 
 ```{r}
@@ -1781,6 +1781,163 @@ df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "--
 rownames(df.mods) <- NULL
 
 df.mods
+```
+
+With NAA RE on, relatively weak impact of covariate
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "/m4/plots_png/diagnostics/NAA_4panel_stock_1_region_1_age_1.png"))
+```
+
+```{r}
+
+larvtemp <- compare_wham_models(mods2, do.table= FALSE, fdir = write.dir)
+
+saveRDS(larvtemp, file.path(write.dir, "larvtempduration.rds"))
+
+larvtemp$g[[1]]
+
+larvtemp$g[[8]]
+
+larvtemp$g[[9]]
+
+knitr::include_graphics(here::here(write.dir, "compare_png/compare_rel_status_kobe.png"))
+
+```
+
+## Larval temperature duration when NAA random effects are OFF
+
+Setup
+
+```{r}
+## Setup
+
+config <- "LarvalTempDuration_NAA_REoff"
+
+# name the model directory
+name <- paste0("mm192_", config)
+
+write.dir <- here::here(sprintf("WHAMfits/%s/", name))
+
+if(!dir.exists(write.dir)) {
+  dir.create(write.dir)
+}
+
+mm192mod <- readRDS(here::here("WHAMfits/mm192_nonaa/mm192_nonaa.rds"))
+
+input <- mm192mod$input
+
+
+# larger set of ecov setups to compare
+df.mods <- data.frame(Recruitment = c(rep(2, 8)),
+                      ecov_process = c(rep("rw",4),rep("ar1",4)),
+                      ecov_how = rep(c("none","controlling-lag-1-linear"), 4),
+                      ecovdat = c(rep("mean-est_1", 2),rep("logmean-est_1",2)),
+                      stringsAsFactors=FALSE)
+n.mods <- dim(df.mods)[1]
+df.mods$Model <- paste0("m",1:n.mods)
+df.mods <- dplyr::select(df.mods, Model, tidyselect::everything()) # moves Model to first col
+
+
+
+```
+
+Run mods (from [this script](https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/WHAMfits/WHAMruns_larvalTemp_NAA_REoff.R))
+
+```{r, eval=FALSE}
+
+## Read environmental index
+
+env.dat <- read.csv(here::here("WHAMfits/Duration.Optimal.SST.Sept-Dec.csv"), header=T)
+
+
+## Run model
+
+for(m in 1:n.mods){
+  
+  ecovdat <- dplyr::case_when(df.mods$ecovdat[m] %in% c("logmean-est_1") ~
+                                as.matrix(log(env.dat$duration)),
+                              TRUE ~as.matrix(env.dat$duration))
+  
+  ecov <- list(
+    label = "LarvalTempDuration",
+    mean = ecovdat,
+    logsigma = "est_1", 
+    year = env.dat$year,
+    use_obs =  matrix(1, ncol=1, nrow=dim(env.dat)[1]), # use all obs (all = 1)
+    process_model = df.mods$ecov_process[m],  # "rw" or "ar1"
+    recruitment_how = as.matrix(df.mods$ecov_how[m])
+  ) 
+  
+  ecovinput <- set_ecov(input, ecov=ecov)
+  
+  mod <- fit_wham(ecovinput, do.osa = T)
+  
+  # Save model
+  saveRDS(mod, file.path(write.dir, paste0(df.mods$Model[m],".rds")))
+  
+  # Plot output in new subfolder
+  plot_wham_output(mod=mod, dir.main=file.path(write.dir,df.mods$Model[m]), out.type='html')
+  
+}
+
+```
+
+Compare models
+
+The model with ecov on (log scale covariate, "rw", WHAM "est_1" sigma, m4), fits best, better than with ecov off for both ar1 and rw:
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "/m4/plots_png/results/Ecov_1_LarvalTempDuration.png"))
+```
+
+
+```{r}
+mod.list <- paste0(write.dir, df.mods$Model,".rds")
+
+mods <- lapply(mod.list, readRDS)
+
+n.mods <- length(mod.list)
+
+vign2_conv <- lapply(mods, function(x) capture.output(check_convergence(x)))
+for(m in 1:n.mods) cat(paste0("Model ",m,":"), vign2_conv[[m]], "", sep='\n')
+
+
+opt_conv = 1-sapply(mods, function(x) x$opt$convergence)
+ok_sdrep = sapply(mods, function(x) if(x$na_sdrep==FALSE & !is.na(x$na_sdrep)) 1 else 0)
+
+df.mods <- df.mods[-16,]
+
+df.mods$conv <- as.logical(opt_conv)
+df.mods$pdHess <- as.logical(ok_sdrep)
+df.mods$NLL <- sapply(mods, function(x) round(x$opt$objective,3))
+
+not_conv <- !df.mods$conv | !df.mods$pdHess
+mods2 <- mods
+mods2[not_conv] <- NULL
+df.aic.tmp <- as.data.frame(compare_wham_models(mods2, table.opts=list(sort=FALSE, calc.rho=T))$tab)
+df.aic <- df.aic.tmp[FALSE,]
+ct = 1
+for(i in 1:n.mods){
+  if(not_conv[i]){
+    df.aic[i,] <- rep(NA,5)
+  } else {
+    df.aic[i,] <- df.aic.tmp[ct,]
+    ct <- ct + 1
+  }
+}
+df.mods <- cbind(df.mods, df.aic)
+df.mods <- df.mods[order(df.mods$dAIC, na.last=TRUE),]
+df.mods[is.na(df.mods$AIC), c('dAIC','AIC','rho_R','rho_SSB','rho_Fbar')] <- "---"
+rownames(df.mods) <- NULL
+
+df.mods
+```
+
+Without NAA RE on, bigger impact of covariate
+
+```{r}
+knitr::include_graphics(here::here(write.dir, "/m4/plots_png/diagnostics/NAA_4panel_stock_1_region_1_age_1.png"))
 ```
 
 ```{r}
