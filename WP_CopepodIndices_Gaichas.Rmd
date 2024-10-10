@@ -102,6 +102,11 @@ samptab <- dplyr::bind_rows(alltot, seasontot, season4tot, larvtot) |>
                 calanusfin = calfin_100m3,
                 euphausid = euph_100m3)
   
+flextable::flextable(samptab) |>
+  flextable::set_caption("Number of survey stations by season with number of postive samples by zooplankton species group.") |>
+  flextable::colformat_double(big.mark = "", digits = 0) |>
+  #flextable::autofit()
+  flextable::width(width = 1)
 
 ```
 
