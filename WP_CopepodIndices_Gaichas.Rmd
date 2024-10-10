@@ -46,8 +46,20 @@ herringfood_stn <- herringfood_stn %>%
   dplyr::mutate(sstfill = ifelse((is.na(sfc_temp)|sfc_temp==0), oisst, sfc_temp),
                 season_larv = month %in% c(1:2, 9:12))
 
+alltot <- herringfood_stn |> 
+  dplyr::summarise(totstn = n(),
+                   across(c(calfin_100m3,
+                            lgcopeALL_100m3,
+                            smallcopeALL_100m3,
+                            cluhar_100m3,
+                            euph_100m3,
+                            volume_100m3
+                            ), ~ sum(.x != 0, na.rm = TRUE))) |>
+  dplyr::mutate(season = "all")
+
+
 seasontot <- herringfood_stn |> 
-  dplyr::group_by(season_ng) |>
+  dplyr::group_by(season = season_ng) |>
   dplyr::summarise(totstn = n(),
                    across(c(calfin_100m3,
                             lgcopeALL_100m3,
@@ -58,7 +70,7 @@ seasontot <- herringfood_stn |>
                             ), ~ sum(.x != 0, na.rm = TRUE)))
 
 season4tot <- herringfood_stn |> 
-  dplyr::group_by(season_4) |>
+  dplyr::group_by(season = season_4) |>
   dplyr::summarise(totstn = n(),
                    across(c(calfin_100m3,
                             lgcopeALL_100m3,
@@ -69,7 +81,8 @@ season4tot <- herringfood_stn |>
                             ), ~ sum(.x != 0, na.rm = TRUE)))
 
 larvtot <- herringfood_stn |> 
-  dplyr::group_by(season_larv) |>
+  dplyr::mutate(season = dplyr::if_else(season_larv, "sepfeb", "nolarv")) |>
+  dplyr::group_by(season) |>
   dplyr::summarise(totstn = n(),
                    across(c(calfin_100m3,
                             lgcopeALL_100m3,
@@ -78,6 +91,17 @@ larvtot <- herringfood_stn |>
                             euph_100m3,
                             volume_100m3
                             ), ~ sum(.x != 0, na.rm = TRUE)))
+
+samptab <- dplyr::bind_rows(alltot, seasontot, season4tot, larvtot) |>
+  dplyr::select(season, 
+                stations = totstn,
+                zoopvol = volume_100m3,
+                largecope = lgcopeALL_100m3,
+                smallcope = smallcopeALL_100m3,
+                herringlarv = cluhar_100m3,
+                calanusfin = calfin_100m3,
+                euphausid = euph_100m3)
+  
 
 ```
 
