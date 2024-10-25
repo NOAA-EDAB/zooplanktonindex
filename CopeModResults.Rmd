@@ -43,9 +43,11 @@ Actual species in each:
 
 *   Small copeopods SOE (used in small-large index):  Centropages typicus, Pseudocalanus spp., Temora longicornis, Centropages hamatus
 
-Model selection looked at inclusion of different spatial and spatio-temporal random effects. Testing alwaus included all of them. See [here](https://noaa-edab.github.io/zooplanktonindex/CopeModSelection.html). 
+Model selection looked at inclusion of different spatial and spatio-temporal random effects. Testing always included all of them. See [here](https://noaa-edab.github.io/zooplanktonindex/CopeModSelection.html). 
 
 Therefore I attempted to run bias-corrected models for each copepod category and 6 month season (Spring = Jan-June, Fall = July-December). All but one worked.
+
+Catchability covariates were difficult to envision for a zooplankton survey, but we tried Day of Year to compensate for changes in standing stock over time for a high turnover species. This covariate ("doy" in model names) often resulted in models with lower AIC but poor convergence properties. Therefore we only used this covariate when AIC was lower *and* the model met convergence critiera. 
 
 ## Table of current model stats
 
@@ -364,9 +366,21 @@ modcompare_conv <- modselect |>
   unname() |>
   unlist()
 
+# or only converged and best AIC
+modcompare_best <- modselect |>
+  dplyr::ungroup() |>
+  dplyr::filter(converged2 == "likely") |>
+  dplyr::distinct(copegroup, season, .keep_all = T) |> # assumes orderd by dAIC!
+  dplyr::select(modname) |>
+  as.vector() |>
+  unname() |>
+  unlist()
+
 moddirs_conv <-  moddirs[grepl(sprintf("\\.*(%s)$", paste(modcompare_conv, collapse = '|')), moddirs)]
 
-modcompareindex <- purrr::map_dfr(moddirs_conv, purrr::possibly(getmodindex, otherwise = NULL))
+moddirs_best <-  moddirs[grepl(sprintf("\\.*(%s)$", paste(modcompare_best, collapse = '|')), moddirs)]
+
+modcompareindex <- purrr::map_dfr(moddirs_best, purrr::possibly(getmodindex, otherwise = NULL))
 
 splitoutput <- modcompareindex %>%
   dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
@@ -494,7 +508,7 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs_conv[str_detect(moddirs_conv, "calfin")]){
+for(d.name in moddirs_best[str_detect(moddirs_best, "calfin")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -521,7 +535,7 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs_conv[str_detect(moddirs_conv, "lgcopeALL")]){
+for(d.name in moddirs_best[str_detect(moddirs_best, "lgcopeALL")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -548,7 +562,7 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs_conv[str_detect(moddirs_conv, "smallcopeALL")]){
+for(d.name in moddirs_best[str_detect(moddirs_best, "smallcopeALL")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -575,7 +589,7 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs_conv[str_detect(moddirs_conv, "smallcopeSOE")]){
+for(d.name in moddirs_best[str_detect(moddirs_best, "smallcopeSOE")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
@@ -602,7 +616,33 @@ plot_zooindices(splitoutput = splitoutput,
 ### Density estimates
 
 ```{r, results = "asis"}
-for(d.name in moddirs_conv[str_detect(moddirs_conv, "zoopvol")]){
+for(d.name in moddirs_best[str_detect(moddirs_best, "zoopvol")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  if(file.exists(paste0(d.name, "/ln_density-predicted.png"))){
+    cat(paste0("![](",d.name, "/ln_density-predicted.png)"))
+  }
+  cat("\n\n")
+  
+}
+```
+
+## Euphausiids
+
+```{r, fig.height=10}
+plot_zooindices(splitoutput = splitoutput, 
+             plotdata = "euph", 
+             plotregions = c("her_sp", "her_fa", "MAB", "GB", "GOM", "SS", "AllEPU"), 
+             plottitle = "Euphausiids") 
+```
+
+### Density estimates
+
+```{r, results = "asis"}
+for(d.name in moddirs_best[str_detect(moddirs_best, "euph")]){
   
   modpath <- unlist(str_split(d.name, pattern = "/"))
   modname <- modpath[length(modpath)]
