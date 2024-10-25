@@ -296,6 +296,81 @@ Time series
 
 ```{r}
 
+SOEinputs <- function(d.name, stratlook) {
+  
+  
+  modpath <- stringr::str_split(d.name, "/", simplify = TRUE)
+  modname <- modpath[length(modpath)]
+  outdir <- stringr::str_c(modpath[1:length(modpath)-1], collapse = "/")
+  
+  infile <- file.path(d.name, "Index.csv")
+
+  season <- stringr::str_split(modname, "_")[2]
+    
+  taxa <- stringr::str_split(modname, "_")[1]
+    
+  outfile <- file.path(outdir, paste0(season, taxa, ".rds"))  
+  
+  splitoutput <- read.csv(infile)
+  
+  zoopindex <- splitoutput %>%
+    left_join(stratlook) %>%
+    dplyr::select(Time, 
+                  EPU = Region, 
+                  "Abundance Index Estimate" = Estimate, 
+                  "Abundance Index Estimate SE" = Std..Error.for.Estimate) %>%
+    tidyr::pivot_longer(c("Abundance Index Estimate", "Abundance Index Estimate SE"), 
+                        names_to = "Var", values_to = "Value") %>%
+    dplyr::filter(EPU %in% c("MAB", "GB", "GOM", "AllEPU")) %>%
+    dplyr::mutate(Units = "numbers per 100 cu m volume") %>%
+    dplyr::select(Time, Var, Value, EPU, Units)
+  
+  zoopindex$Var <- stringr::str_c(season, taxa, zoopindex$Var, sep = " ")
+  
+  saveRDS(zoopindex, outfile)
+  
+} 
+
+  # standard zoop strata
+  stratlook <- data.frame(Stratum = c("Stratum_1",
+                                      "Stratum_2",
+                                      "Stratum_3",
+                                      "Stratum_4",
+                                      "Stratum_5",
+                                      "Stratum_6",
+                                      "Stratum_7"),
+                          Region  = c("AllEPU",
+                                      "her_sp",
+                                      "her_fa",
+                                      "MAB",
+                                      "GB",
+                                      "GOM",
+                                      "SS"))
+
+    # larvarea zoop strata
+    stratlook2 <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7",
+                                    "Stratum_8",
+                                    "Stratum_9"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "her_larv",
+                                    "no_larv",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
+
+    
+    
+
+
 ```
 
 Center of gravity
