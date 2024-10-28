@@ -298,6 +298,7 @@ Time series
 
 SOEinputs <- function(d.name, stratlook) {
   
+  stratlook <- mget(stratlook)
   
   modpath <- stringr::str_split(d.name, "/", simplify = TRUE)
   modname <- modpath[length(modpath)]
@@ -368,9 +369,10 @@ SOEinputs <- function(d.name, stratlook) {
                                     "SS"))
 
     
-    
+name <-  dplyr::case_when(stringr::str_detect(moddirs_best, "larvarea") ~ "stratlook2", 
+                                                 TRUE ~ "stratlook")   
 
-
+purrr::map2(moddirs_best, name, SOEinputs)
 ```
 
 Center of gravity
