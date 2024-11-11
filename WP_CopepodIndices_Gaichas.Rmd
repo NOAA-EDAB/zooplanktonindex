@@ -137,7 +137,7 @@ p2
 
 ```
 
-Focus is on recruitment, food for larvae through juveniles.
+Our focus in developing the indices is on herring recruitment, so we prioritize indices of food for larvae through juveniles.
 
 Models developed for the Herring RT are for the following copepod categories:
 
@@ -147,7 +147,7 @@ Models developed for the Herring RT are for the following copepod categories:
 
 These categories included all life stages of each copepod species.
 
-(Models were also developed for *Calanus finmarchicus* alone, total zooplankton volume, and Euphausiids, but are not presented here.)
+(Models were also developed for *Calanus finmarchicus* alone, total zooplankton volume, and Euphausiids, which may be useful for comparison with adult Atlantic herring condition or growth in the future.)
 
 An additional model was developed for Atlantic herring larvae using the same dataset in order to characterize the spatial extent of herring larvae compared with their zooplankton prey. This model was not used as an index due to missing data during several years of the time series.
 
@@ -312,6 +312,112 @@ Options explored for temporal scale included:
     *  "sepfeb" months 9-12 and 1-2 of the following year
     *  "nolarv" months 3-8
 
+
+Testing models with data split over 4 seasons for 1982-2022 resulted in poor model performance, inability to estimate parameters, and lack of convergence for cases where parameters could be estimated. Therefore, we used the SPRING = January-June and FALL = July-December temporal scale as a starting point. 
+
+## Spatio-temporal modeling
+
+We applied the Vector Autoregressive Spatio-Temporal (VAST) model [@thorson_comparing_2017; @thorson_guidance_2019] to estimate zooplankton indices from zooplankton survey data. 
+
+VAST is a Geostatistical generalized linear mixed effects model (GLMM) that models two linear predictors for an index: 1. encounter rate,  and 2. positive catch (amount in stomach)
+
+A full model for the first linear predictor $\rho_1$ for each observation $i$ can include:
+*  fixed intercepts $\beta_1$ for each category $c$ and time $t$, 
+*  spatial random effects $\omega_1$ for each location $s$ and category, 
+*  spatio-temporal random effects $\varepsilon_1$ for each location, category, and time, 
+*  fixed vessel effects $\eta_1$ by vessel $v$ and category, and 
+*  fixed catchability impacts $\lambda_1$ of covariates $Q$ for each observation and variable $k$: 
+
+$$\rho_1(i) = \beta_1(c_i, t_i) + \omega_1^*(s_i, c_i) + \varepsilon_1^*(s_i, c_i, t_i) + \eta_1(v_i, c_i) + \sum_{k=1}^{n_k} \lambda_1(k) Q(i,k)$$ 
+
+The full model for the second linear predictor $\rho_2$ has the same structure, estimating $\beta_2$, $\omega_2$, $\varepsilon_2$, $\eta_2$, and $\lambda_2$ using the observations, categories, locations, times, and covariates. 
+
+VAST model code and documentation is available here: https://github.com/James-Thorson-NOAA/VAST 
+
+Spatial and spatio-temporal correlation decay with increasing distance estimated as $\kappa$ in a Matern function with fixed smoothness and geometric anisotropy (directional correlation, optionally estimated by the model). 
+
+Initial model selection consistently supported the inclusion of spatial and spatio-temporal random effects and anisotropy across all datasets: fall, spring, and annual. 
+
+Observations in space are used to define fixed locations ("knots") covering the full extent of the model. We assume constant variation within a timestep at a knot. 
+
+Modelers specify the number of knots to group observation locations, to balance computation time and resolution. We used 500 knots (Fig. \ref{fig:knots}).
+
+```{r knots}
+knitr::include_graphics(here::here("pyindex/lgcopeALL_spring_500_biascorrect_doy/Data_and_knots.png"))
+```
+
+Observations correlated in space and in space over time due to unmeasured processes are modeled as multivariate normal Gaussian Random Fields (GRF):
+
+$\omega_1$ ~ MVN(0, $\mathbf R_1$); $\omega_2$ ~ MVN(0, $\mathbf R_2$)   
+$\varepsilon_1$(,t) ~ MVN(0, $\mathbf R_1$); $\varepsilon_2$(,t) ~ MVN(0, $\mathbf R_2$) 
+
+Spatial and spatio-temporal correlation decay with increasing distance $\mathbf d$ estimated as $\kappa$ in a Mat&eacute;rn function with fixed smoothness $\nu$ and geometric anisotropy $H$ (directional correlation). 
+  
+Correlation function between locations $s$ and $s'$:
+
+$$\mathbf R_1(s, s') = \frac{1}{2^{\nu-1}\Gamma(\nu)} \times (\kappa_1 \lvert \mathbf d(s,s') \mathbf H  \rvert)^\nu \times K_\nu (\kappa_1 \lvert \mathbf d(s,s') \mathbf H  \rvert)$$
+
+Estimation uses stochastic partial differential equation (SPDE) approximation.
+
+Observation model "Index2", Gamma distribution for positive catches and Alternative "Poisson-link delta-model" using log-link for numbers-density and log-link for biomass per number. It is intended for continuous data, which includes biomass data and “numbers standardized to a fixed area.”
+
+Probability of encounter Poisson: $p(i) = 1 - exp[-n(i)]$ *set to 1 for groups found at all stations, e.g. small copepods or zooplankton volume*
+
+Number of zooplankton cells per volume given encounter: $r(i) = \frac{n(i)}{p(i)}w(i)$
+
+Probability for numbers per volume $B$ where $g$ is a Gamma function.  :
+
+$$ Pr[b(i) = B] =  \begin{cases} 1-p(i), B = 0\\\\p(i) \times g[B|r(i), \sigma_b^2], B > 0 \end{cases},$$  
+
+We are interpreting zooplankton abundance per 100 cubic meters as numbers standardized to a fixed area (volume) in applying the Gamma observation model.
+
+Density $b$ at a location (knot) $s$ for year $t$ is then the predicted number of cells per volume (linear predictor for encounter * linear predictor for cells/vol given encounter):
+
+$$\hat{b}_{s,t} = \hat{n}_{s,t}\hat{w}_{s,t}$$
+
+Index based on area $a$ weighting for each of 500 knots (or subsets): 
+
+$$I_t = \sum_{s=1}^{500} a_s\hat{b}_{s,t}$$
+
+For final models, bias correction was done as in @thorson_implementing_2016.
+
+## Model validation
+
+Zooplankton indices have not previously been developed using spatio-temporal modeling in the Northeast US. Therefore, we compare previously estimated annual abundance anomalies for *Calanus finmarchicus* with annual anomalies estimated from our VAST models. These anomalies are estimated at the ecoregion (Mid Atlantic Bight--MAB, Georges Bank--GB, and Gulf of Maine--GOM) scale. 
+
+## Model selection
+
+Model selection was done in two stages, the first looking at spatial, spatio-temporal random effects and the second looking at covariates.  The model selection script is available at 
+https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/VASTscripts/VASTunivariate_zoopindex_modselection.R
+
+Models were run using REML and without bias correction for model selection. 
+
+Two different observation models were applied. The default VAST index standardization (`purpose = "index2"` in `make_settings`) uses a Gamma distribution for positive catches and an alternative "Poisson-link delta-model" using log-link for numbers-density and log-link for biomass per number (`ObsModel= c(2,1)`).
+
+We applied the default observation model to *Calanus finmarchicus* (calfin_100m3) and Large copepods (calfin_100m3 + mlucens_100m3 + calminor_100m3 + euc_100m3 + calspp_100m3) datasets.
+
+The default was used for index standardization of stomach contents data for pelagic and benthic forage indices. It is intended for continuous data, which includes biomass data and "numbers standardized to a fixed area" (see section starting at line 239 in the VAST user manual [here](https://github.com/James-Thorson-NOAA/VAST/blob/main/manual/VAST_model_structure.pdf). I am interpreting zooplankton abundance per 100 cubic meters as numbers standardized to a fixed area (volume) in applying the Gamma observation model.
+
+For data where there are some years where the species is present in all (or 0) samples, estimating the probability of encounter fails (or at least, VAST won't let you try). In these cases, the options are to treat intercepts representing temporal variability as random effects (by setting `RhoConfig` `Beta` or `Epsilon` entries to something other than 0), or to use a different link function. 
+
+We intend for our indices to potentially be used in assessment (though as a covariate rather than an index, so maybe I'm being too strict), so the recommendation is to "minimize covariance in the estimated index by excluding any temporal correlation on model components (i.e., the intercept is a fixed effect in each year, and the spatio-temporal term is independent in each year)" [@thorson_guidance_2019]. 
+
+All of the small copepods datasets had at least one year where our small copepods groupings were encountered at all stations. None had years with 0 encounters. 
+
+Therefore, we used a different link function, the Poisson-link fixing encounter probability=1 for any year where all samples encounter the species. We kept all other settings for index standardization the same, but set (`ObsModel= c(2,4)`).
+
+The only "catchability" covariates tested were Day of Year ("doy") to compensate for the fast turnover rate of zooplankton during the season.  
+
+Converged models with the lowest AIC for each taxonomic/season combination were considered best.
+
+## Model diagnostics
+
+After selecting the converged model structures with the most support based on AIC, standard diagnostics were evaluated for each model: data available by season, year, and in space, quantile residuals in aggregate and in space, and 
+
+# Results
+
+## Sampling during each season
+
 Sample sizes in each of these temporal categories are reported below.
 
 ```{r}
@@ -389,76 +495,308 @@ flextable::flextable(samptab) |>
 
 ```
 
-Testing models with data split over 4 seasons for 1982-2022 resulted in poor model performance, inability to estimate parameters, and lack of convergence for cases where parameters could be estimated. Therefore, we used the SPRING = January-June and FALL = July-December temporal scale as a starting point. 
+## Model validation
 
-## Spatio-temporal modeling
+```{r}
 
-We applied the Vector Autoregressive Spatio-Temporal (VAST) model [@thorson_comparing_2017; @thorson_guidance_2019] to estimate zooplankton indices from zooplankton survey data. 
+stratlook <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
 
-VAST is a Geostatistical generalized linear mixed effects model (GLMM) that models two linear predictors for an index: 1. encounter rate,  and 2. positive catch (amount in stomach)
+stratlook2 <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7",
+                                    "Stratum_8",
+                                    "Stratum_9"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "her_larv",
+                                    "no_larv",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
 
-A full model for the first linear predictor $\rho_1$ for each observation $i$ can include:
-*  fixed intercepts $\beta_1$ for each category $c$ and time $t$, 
-*  spatial random effects $\omega_1$ for each location $s$ and category, 
-*  spatio-temporal random effects $\varepsilon_1$ for each location, category, and time, 
-*  fixed vessel effects $\eta_1$ by vessel $v$ and category, and 
-*  fixed catchability impacts $\lambda_1$ of covariates $Q$ for each observation and variable $k$: 
+source(here::here("R/utils_VASToutput.R")) #IEA/HerringRT_2025/
 
-$$\rho_1(i) = \beta_1(c_i, t_i) + \omega_1^*(s_i, c_i) + \varepsilon_1^*(s_i, c_i, t_i) + \eta_1(v_i, c_i) + \sum_{k=1}^{n_k} \lambda_1(k) Q(i,k)$$ 
+outdir <- here::here("mods") #IEA/HerringRT_2025/
+moddirs <- list.dirs(outdir) 
+moddirs <- moddirs[-1]
+# keep folder name
+modnames <- list.dirs(outdir, full.names = FALSE)
 
-The full model for the second linear predictor $\rho_2$ has the same structure, estimating $\beta_2$, $\omega_2$, $\varepsilon_2$, $\eta_2$, and $\lambda_2$ using the observations, categories, locations, times, and covariates. 
+modselect <- modtable(moddirs)
 
-VAST model code and documentation is available here: https://github.com/James-Thorson-NOAA/VAST 
+# lets only look at indices for converged models
+modcompare_conv <- modselect |>
+  dplyr::ungroup() |>
+  dplyr::filter(converged2 == "likely") |>
+  dplyr::select(modname) |>
+  as.vector() |>
+  unname() |>
+  unlist()
 
-Spatial and spatio-temporal correlation decay with increasing distance estimated as $\kappa$ in a Matern function with fixed smoothness and geometric anisotropy (directional correlation, optionally estimated by the model). 
+moddirs_conv <-  moddirs[grepl(sprintf("\\.*(%s)$", paste(modcompare_conv, collapse = '|')), moddirs)]
 
-Initial model selection consistently supported the inclusion of spatial and spatio-temporal random effects and anisotropy across all datasets: fall, spring, and annual. 
 
-Observations in space are used to define fixed locations ("knots") covering the full extent of the model. We assume constant variation within a timestep at a knot. 
+modcompareindex <- purrr::map_dfr(moddirs_conv, purrr::possibly(getmodindex, otherwise = NULL))
 
-Modelers specify the number of knots to group observation locations, to balance computation time and resolution. We used 500 knots (Fig. \ref{fig:knots}).
+splitoutput <- modcompareindex %>%
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook)
 
-```{r knots}
-knitr::include_graphics(here::here("pyindex/lgcopeALL_spring_500_biascorrect_doy/Data_and_knots.png"))
+# only larvarea models have this strata set
+splitoutput2 <- modcompareindex %>%
+  dplyr::filter(str_detect(modname, "larvarea")) |>
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook2)
+
+zoomax <- max(splitoutput$Estimate, na.rm=T)
+
+zootsmean <- splitoutput %>%
+  dplyr::group_by(modname, Region) %>%
+  dplyr::mutate(fmean = mean(Estimate, na.rm=T)) 
+
 ```
 
-Observations correlated in space and in space over time due to unmeasured processes are modeled as multivariate normal Gaussian Random Fields (GRF):
+```{r, fig.width=9, fig.asp=.7}
+VASTmean <- splitoutput |>
+    dplyr::filter(Data %in% c("calfin"),
+                  Season %in% c("annual"),
+                  Region %in% c("MAB", "GB", "GOM")) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::summarise(tsmean = mean(Estimate))
 
-$\omega_1$ ~ MVN(0, $\mathbf R_1$); $\omega_2$ ~ MVN(0, $\mathbf R_2$)   
-$\varepsilon_1$(,t) ~ MVN(0, $\mathbf R_1$); $\varepsilon_2$(,t) ~ MVN(0, $\mathbf R_2$) 
+VASTanom <- splitoutput |>
+    dplyr::filter(Data %in% c("calfin"),
+                  Season %in% c("annual"),
+                  Region %in% c("MAB", "GB", "GOM")) |>
+    dplyr::left_join(VASTmean) |>
+    dplyr::group_by(Region, Season) |>
+    dplyr::mutate(#Value = Value/resca,
+      Mean = as.numeric(Estimate),
+      SE = Std..Error.for.Estimate,
+      Mean = (Mean-tsmean)/tsmean,
+      SE = (SE-tsmean)/tsmean,
+      Upper = Mean + SE,
+      Lower = Mean - SE) |>
+  dplyr::rename(EPU = Region)
 
-Spatial and spatio-temporal correlation decay with increasing distance $\mathbf d$ estimated as $\kappa$ in a Mat&eacute;rn function with fixed smoothness $\nu$ and geometric anisotropy $H$ (directional correlation). 
+SOEcalfin <- ecodata::zoo_abundance_anom |>
+  dplyr::mutate(Value = as.numeric(Value)) |>
+  dplyr::filter(Var == "Calfin") |>
+  ggplot2::ggplot(aes(x = Time, y = Value)) +
+  ggplot2::geom_point(color="darkred") + 
+  ggplot2::geom_line(color="darkred") + 
+  ecodata::geom_gls() +
+  ggplot2::geom_line(data = VASTanom, aes(x=Time, y=Mean), color = "blue", size=1.5) +
+  ecodata::theme_facet() +
+  ggplot2::facet_wrap(~EPU)
+
+SOEcalfin + ggplot2::ggtitle("Calanus finmarchicus annual anomaly: ecodata in dark red; VAST in blue")
+
+```
+
+GB = Georges Bank, GOM = Gulf of Maine, MAB = Mid Atlantic Bight. Different calculation method, spatial definitions
+
+
+## Model selecction Stage 1 results
+
+```{r}
+# from each output folder in pyindex, 
+outdir <- here::here("pyindex_modsel1")
+moddirs <- list.dirs(outdir) 
+moddirs <- moddirs[-1]
+# keep folder name
+modnames <- list.dirs(outdir, full.names = FALSE)
+
+
+# function to apply extracting info
+getmodinfo <- function(d.name){
+  # read settings
+  modpath <- stringr::str_split(d.name, "/", simplify = TRUE)
+  modname <- modpath[length(modpath)]
   
-Correlation function between locations $s$ and $s'$:
+  settings <- read.table(file.path(d.name, "settings.txt"), comment.char = "",
+    fill = TRUE, header = FALSE)
+  
+  n_x <- as.numeric(as.character(settings[(which(settings[,1]=="$n_x")+1),2]))
+  grid_size_km <- as.numeric(as.character(settings[(which(settings[,1]=="$grid_size_km")+1),2]))
+  max_cells <- as.numeric(as.character(settings[(which(settings[,1]=="$max_cells")+1),2]))
+  use_anisotropy <- as.character(settings[(which(settings[,1]=="$use_anisotropy")+1),2])
+  fine_scale <- as.character(settings[(which(settings[,1]=="$fine_scale")+1),2])
+  bias.correct <- as.character(settings[(which(settings[,1]=="$bias.correct")+1),2])
+  
+  #FieldConfig
+  if(settings[(which(settings[,1]=="$FieldConfig")+1),1]=="Component_1"){
+    omega1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+2),2])
+    omega2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+3),1])
+    epsilon1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+4),2])
+    epsilon2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+5),1])
+    beta1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+6),2])
+    beta2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+7),1])
+  }
+  
+  if(settings[(which(settings[,1]=="$FieldConfig")+1),1]=="Omega1"){
+    omega1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+3),1])
+    omega2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+4),1])
+    epsilon1 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+3),2])
+    epsilon2 <- as.character(settings[(which(settings[,1]=="$FieldConfig")+4),2])
+    beta1 <- "IID"
+    beta2 <- "IID"
+  }
+  
+  
+  #RhoConfig
+  rho_beta1 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+3),1]))
+  rho_beta2 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+3),2]))
+  rho_epsilon1 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+4),1]))
+  rho_epsilon2 <- as.numeric(as.character(settings[(which(settings[,1]=="$RhoConfig")+4),2]))
+  
+  # read parameter estimates, object is called parameter_Estimates
+  if(file.exists(file.path(d.name, "parameter_estimates.RData"))) {
+    load(file.path(d.name, "parameter_estimates.RData"))
+    
+    AIC <- parameter_estimates$AIC[1]  
+    converged <- parameter_estimates$Convergence_check[1]
+    fixedcoeff <- unname(parameter_estimates$number_of_coefficients[2])
+    randomcoeff <- unname(parameter_estimates$number_of_coefficients[3])
+    
+  }else if(file.exists(file.path(d.name, "parameter_estimates.txt"))){
+    
+    reptext <- readLines(file.path(d.name, "parameter_estimates.txt"))
+    
+    AIC <- as.double(reptext[grep(reptext, pattern = "AIC")+1])
+    converged <- reptext[grep(reptext, pattern = "Convergence_check")+1]
+    fixedcoeff <- as.integer(stringr::str_split(reptext[grep(reptext, pattern = "number_of_coefficients")+2], 
+                                     boundary("word"))[[1]][2])
+    randomcoeff <- as.integer(stringr::str_split(reptext[grep(reptext, pattern = "number_of_coefficients")+2], 
+                                     boundary("word"))[[1]][3])
+    
+  }else{
+    
+    AIC <- NA_real_
+    converged <- NA_character_
+    fixedcoeff <- NA_integer_
+    randomcoeff <- NA_integer_
+  }
+  
+  #index <- read.csv(file.path(d.name, "Index.csv"))
+  
+  
+  # return model attributes as a dataframe
+  out <- data.frame(modname = modname,
+                    n_x = n_x,
+                    grid_size_km = grid_size_km,
+                    max_cells = max_cells,
+                    use_anisotropy = use_anisotropy,
+                    fine_scale =  fine_scale,
+                    bias.correct = bias.correct,
+                    omega1 = omega1,
+                    omega2 = omega2,
+                    epsilon1 = epsilon1,
+                    epsilon2 = epsilon2,
+                    beta1 = beta1,
+                    beta2 = beta2,
+                    rho_epsilon1 = rho_epsilon1,
+                    rho_epsilon2 = rho_epsilon2,
+                    rho_beta1 = rho_beta1,
+                    rho_beta2 = rho_beta2,
+                    AIC = AIC,
+                    converged = converged,
+                    fixedcoeff = fixedcoeff,
+                    randomcoeff = randomcoeff#,
+                    #index = index
+  )
+  	
+	return(out)
 
-$$\mathbf R_1(s, s') = \frac{1}{2^{\nu-1}\Gamma(\nu)} \times (\kappa_1 \lvert \mathbf d(s,s') \mathbf H  \rvert)^\nu \times K_\nu (\kappa_1 \lvert \mathbf d(s,s') \mathbf H  \rvert)$$
-
-Estimation uses stochastic partial differential equation (SPDE) approximation.
-
-Observation model "Index2", Gamma distribution for positive catches and Alternative "Poisson-link delta-model" using log-link for numbers-density and log-link for biomass per number. It is intended for continuous data, which includes biomass data and “numbers standardized to a fixed area.”
-
-Probability of encounter Poisson: $p(i) = 1 - exp[-n(i)]$ *set to 1 for groups found at all stations, e.g. small copepods or zooplankton volume*
-
-Number of zooplankton cells per volume given encounter: $r(i) = \frac{n(i)}{p(i)}w(i)$
-
-Probability for numbers per volume $B$ where $g$ is a Gamma function.  :
-
-$$ Pr[b(i) = B] =  \begin{cases} 1-p(i), B = 0\\\\p(i) \times g[B|r(i), \sigma_b^2], B > 0 \end{cases},$$  
-
-We are interpreting zooplankton abundance per 100 cubic meters as numbers standardized to a fixed area (volume) in applying the Gamma observation model.
-
-Density $b$ at a location (knot) $s$ for year $t$ is then the predicted number of cells per volume (linear predictor for encounter * linear predictor for cells/vol given encounter):
-
-$$\hat{b}_{s,t} = \hat{n}_{s,t}\hat{w}_{s,t}$$
-
-Index based on area $a$ weighting for each of 500 knots (or subsets): 
-
-$$I_t = \sum_{s=1}^{500} a_s\hat{b}_{s,t}$$
-
-Bias correction as in @thorson_implementing_2016.
+}
 
 
-# Results
+modcompare <- purrr::map_dfr(moddirs, getmodinfo)
+```
+
+Models compared using REML are identified by model name ("modname" in Table Sb\@ref(tab:modsel1)) which always includes all prey aggregated, season ("all" for annual models of months 1-12, "fall" for models of months 7-12, and "spring" for models of months 1-6), number of knots (500 for all models), and which fixed and random spatial and spatio-temporal effects were included in which linear predictor (1 or 2). The names for model options and associated VAST model settings are:
+
+Model selection 1 (spatial, spatio-temporal effects, no covariates) options (following @ng_predator_2021) and naming:
+*  All models set Use_REML = TRUE in fit_model specifications.  
+*  Modeled effects, model name suffix, and VAST settings by model:  
+
+1.  "_alleffectson" = Spatial and spatio-temporal random effects plus anisotropy in both linear predictors; FieldConfig default (all IID)
+1.  "_noaniso" = Spatial and spatio-temporal random effects in both linear predictors with anisotopy turned off; FieldConfig default (all IID) and `use_anisotopy = FALSE`
+1.  "_noomeps2" = Spatial and spatio-temporal random effects plus anisotropy only in linear predictor 1;   FieldConfig = 0 for Omega2, Epsilon2
+1.  "_noomeps2_noaniso" = Spatial and spatio-temporal random effects only in linear predictor 1 with anisotopy turned off;  FieldConfig = 0 for Omega2, Epsilon2 and `use_anisotopy = FALSE`
+1. "_noomeps2_noeps1" =  Spatial random effects plus anisotropy only in linear predictor 1;   FieldConfig = 0 for Omega2, Epsilon2, Epsilon1
+1.  "_noomeps2_noeps1_noaniso" = Spatial random effects only in linear predictor 1 with anisotopy turned off;   FieldConfig = 0 for Omega2, Epsilon2, Epsilon1 and `use_anisotopy = FALSE`
+1.  "_noomeps12" = Anisotropy, but no spatial or spatio-temporal random effects in either linear predictor;   FieldConfig = 0 for both Omega, Epsilon 
+1.  "_noomeps12_noaniso" = No spatial or spatio-temporal random effects in either linear predictor;  FieldConfig = 0 for both Omega, Epsilon  and `use_anisotopy = FALSE`
+
+
+```{r modsel1}
+modselect <- modcompare |>
+  dplyr::mutate(season = dplyr::case_when(stringr::str_detect(modname, "_fall_") ~ "Fall",
+                            stringr::str_detect(modname, "spring") ~ "Spring",
+                            stringr::str_detect(modname, "_all_") ~ "Annual",
+                            TRUE ~ as.character(NA))) |>
+  dplyr::mutate(converged2 = dplyr::case_when(stringr::str_detect(converged, "no evidence") ~ "likely",
+                                stringr::str_detect(converged, "is likely not") ~ "unlikely",
+                                TRUE ~ as.character(NA))) |>
+  dplyr::mutate(copegroup = stringr::str_extract(modname, "[^_]+")) |>
+  #dplyr::mutate(modname = str_extract(modname, '(?<=allagg_).*')) |>
+  dplyr::group_by(copegroup, season) |>
+  dplyr::mutate(deltaAIC = AIC-min(AIC)) |>
+  dplyr::select(copegroup, modname, season, deltaAIC, fixedcoeff,
+         randomcoeff, use_anisotropy, 
+         omega1, omega2, epsilon1, epsilon2, 
+         beta1, beta2, AIC, converged2) |>
+  dplyr::arrange(copegroup, season, AIC)
+
+# DT::datatable(modselect, rownames = FALSE, 
+#               options= list(pageLength = 25, scrollX = TRUE),
+#               caption = "Comparison of delta AIC values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures. See text for model descriptions.")
+
+flextable::flextable(modselect |>
+                       dplyr::select(-c(use_anisotropy, 
+         omega1, omega2, epsilon1, epsilon2, 
+         beta1, beta2))) |>
+  flextable::set_header_labels(copegroup = "Copepod group",
+                               modname = "Model name",
+                               season = "Season",
+                               deltaAIC = "dAIC",
+                               fixedcoeff = "N fixed",
+                               randomcoeff = "N random",
+                               converged2 = "Convergence") |>
+  flextable::set_caption("Comparison of delta AIC (dAIC) values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures, with number of fixed (N fixed) and random (N random) coefficients. See text for model descriptions associated with each model name.") |>
+  flextable::fontsize(size = 9, part = "all") |>
+  flextable::colformat_double(digits = 2) |>
+  flextable::set_table_properties(layout = "autofit", width = 1)
+```
+
+Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for calfin, lgcopeALL, smallcopeALL, and smallcopeSOE. 
+
+Full outputs from stage 1 model selection are posted to google drive [here](https://drive.google.com/drive/folders/1szQzBbn-bQosPK4AqKRbfbduGGMM-BDG?usp=drive_link). 
+
 
 # Discussion
 
