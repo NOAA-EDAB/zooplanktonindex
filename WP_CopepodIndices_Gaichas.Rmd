@@ -416,18 +416,177 @@ After selecting the converged model structures with the most support based on AI
 
 ## Defining herring larval presence in time and space
 
-When developing a zooplankton index, it is important to determine whether the zooplankton are available to herring larvae in time and space. We used data available on herring larvae in the zooplankton dataset to define the most likely time and space for herring larvae, and used those definitions to further refine selected zooplankton indices.
+When developing a zooplankton index, it is important to determine whether the zooplankton are available to herring larvae in time and space. We used data available on herring larvae in the zooplankton dataset to define the most likely time and space for herring larvae, and used those temporal and spatial definitions to further refine selected zooplankton indices.
 
 A herring larvae VAST model was developed using the same methods as above, and resulting indices were compared with those estimated by @richardson_development_2010. 
 
 Models were initially developed using the same seasons as for zooplankton (Spring = January-June, Fall = July-December). However, nearly all observations of herring larvae in the 1982-2022 dataset were from September - February (also reflected in the index developed in @richardson_development_2010.) Therefore, another model for September-February was developed, which aligned observations in January-February with those from the preceeding fall September-December. 
+
+To define areas with the most dense herring larvae, we calculate quantiles of density in space across the time series. First we sum the density in each cells over all years, then calculate the quantiles of summed log density from the September-February herring larvae VAST model.
+
+```{r, fig.width=10}
+
+# one option, sum D_gct over all years then take quantiles in space
+
+D <- readRDS("Dherr_sepfeb.rds")
+
+Dtot <- D |> 
+  dplyr::group_by(cell) |>
+  dplyr::mutate(Dsum = sum(D, na.rm=TRUE),
+                logD = log(as.vector(Dsum))) |>
+  dplyr::select(!c(D, Year)) |>
+  dplyr::distinct()
+
+Dvec <- terra::vect(Dtot, geom=c("Lon", "Lat"))
+
+q <- quantile(log(as.vector(Dtot$Dsum)), probs=seq(0,1,0.1))
+q2 <- quantile(Dtot$logD, probs=seq(0,1,0.1))
+
+qvec <- terra::quantile(Dvec, probs=c(0.6, 0.65, 0.7, 0.75, 0.8))
+
+quants <- classInt::classIntervals(log(as.vector(Dtot$Dsum)), 
+                                   style = "quantile", n = 10)
+
+#quants$brks
+
+
+D60pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["60%","logD"]) |>
+  dplyr::rename("60th" = "Include")
+
+D65pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["65%","logD"]) |>
+  dplyr::rename("65th" = "Include")
+
+D70pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["70%","logD"]) |>
+  dplyr::rename("70th" = "Include")
+
+D75pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["75%","logD"]) |>
+  dplyr::rename("75th" = "Include")
+
+D80pct <- Dtot |>
+  dplyr::filter(log(as.vector(Dsum))>qvec["80%","logD"]) |>
+  dplyr::rename("80th" = "Include")
+
+qvec
+
+```
+
+
+Mapping the summed density below.
+
+```{r}
+g <- gmap +
+  geom_point(data=Dtot, aes(Lon, Lat, color=log(as.vector(Dsum)), group=NULL)
+             ,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             ) 
+
+g
+```
+
+Mapping the quantiles from 60% (white) to 80% (light blue).
+
+Quantiles below 70% include densities south of Long Island and off Cape Hatteras. The WG thinks the larvae found to the south may be lost to the population so we likely don't want to use a quantile below the 70th percentile.
+
+The 80th percentile starts to show a gap on Georges Bank and along the southwest coast of Maine. This may be slicing things too finely to cover general herring larval habitat. 
+
+I think this leaves us with using either the 70th (light green) or 75th (dark green) percentile of summed density over all years to define herring larvae relevant habitat for the small copepods index.
+
+```{r}
+ 
+gq <- gmap +
+ geom_point(data=D60pct, 
+             aes(x=Lon, y=Lat, color = "60th"), 
+            # color="white"
+            #)
+            # ,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  geom_point(data=D65pct, 
+             aes(x=Lon, y=Lat, color = "65th"), 
+             #color="yellow"
+             #)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  geom_point(data=D70pct, 
+             aes(x=Lon, y=Lat, color = "70th"), 
+             #color="green"
+             #)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  geom_point(data=D75pct, 
+             aes(x=Lon, y=Lat, color = "75th"), 
+             #color="darkgreen"
+              #)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+   geom_point(data=D80pct, 
+             aes(x=Lon, y=Lat, color = "80th"), 
+             #color="lightblue"
+             #)
+             #,
+             ## These settings are necessary to avoid
+             ## overlplotting which is a problem here. May need
+             ## to be tweaked further.
+             size=1.5, stroke=0,shape=16
+             )  +
+  
+  ggplot2::scale_color_manual(name = "Quantile",
+                        breaks = c("60th", "65th", "70th", "75th", "80th"),
+                        values = c("60th" = "white", "65th" = "yellow", 
+                                   "70th" = "green", "75th" = "darkgreen", 
+                                   "80th" = "lightblue") )
+  
+gq
+
+
+# another option, pull from fit$report Omega 1 and 2?
+
+```
+
+We selected the 70th percentile as the largest that did not include areas in the southern portion of the range to define the "herring larval area" for use in other zooplankton VAST models.
+
+To make a new extrapolation grid using herring larval density 70th percentile, we first make the 70th percentile+ points into an `sf` object by outlining the "concave hull" of the area, then intersect that object with the built in `FishStatsUtils::northwest_atlantic_grid`. 
+
+Next, we define new strata based on that intersection and make a new extrapolation grid. Then we can use this grid and call the new strata as strata.limits when running the small copepods model.
+
+See the full process here: https://noaa-edab.github.io/zooplanktonindex/HerringLarvaeExplore.html 
+
+Using the new grid, run the smallcopeALL_sepfeb dataset in VAST to get an index in the herring larvae area as well as in the others. 
+
+Script for doing this is https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/VASTscripts/VASTunivariate_zoopindex_smcopeALL_herrlarvarea.R 
 
 
 # Results
 
 ## Sampling during each season
 
-Sample sizes in each of these temporal categories are reported below.
+Sample sizes in each of the temporal categories are reported below.
 
 ```{r}
 
@@ -510,7 +669,7 @@ flextable::flextable(samptab) |>
 
 ### Herring larvae stations by season
 
-Fall sampling for herring larvae was completed in most years aside from GLOBEC. In our definition of spring, herring larvae primarily occur in January and February. We now include a shifted season to better match larval herring availability throughout the time series: September - February. Year corresponds to September-December, and the following January and February are aligned with the previous year (hatch year) in these analyses. 
+Fall sampling for herring larvae was completed in most years aside from GLOBEC. In our definition of spring, herring larvae primarily occur in January and February. We now include a shifted season to better match larval herring availability throughout the time series: September - February. Year corresponds to September-December, and the following January and February are aligned with the previous year (hatch year) in these analyses. Data were missing for 
 
 ```{r, results = "asis"}
 for(d.name in moddirs[str_detect(moddirs, "herring")]){
