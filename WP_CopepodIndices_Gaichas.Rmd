@@ -676,7 +676,7 @@ gq <- gmap +
                                    "70th" = "green", "75th" = "darkgreen", 
                                    "80th" = "lightblue") )
   
-gq
+gq + ggplot2::theme_grey()
 
 
 # another option, pull from fit$report Omega 1 and 2?
@@ -700,7 +700,7 @@ Script for doing this is https://github.com/NOAA-EDAB/zooplanktonindex/blob/main
 
 ## Sampling during each season
 
-Sample sizes in each of the temporal categories are reported below.
+Sample sizes in each of the temporal categories are reported below. Definitions: "all" = January-December; "FALL" = July-December; "SPRING" = January-June; "fall" = September-November; "spring" = March-May; "summer" = June-August; "winter" = December-February; "nolarv" = March-August; "sepfeb" = September-February of the following year.
 
 ```{r}
 
@@ -779,7 +779,21 @@ flextable::flextable(samptab) |>
 
 ### Zooplankton stations by season
 
+```{r, results = "asis"}
+zoopvol <- moddirs[str_detect(moddirs, "zoopvol")]
+zoopvolnocovs <- zoopvol[!str_detect(zoopvol, "_doy")]
 
+for(d.name in zoopvolnocovs){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  cat(paste0("![](",d.name, "/Data_by_year.png)"))
+  cat("\n\n")
+  
+}
+```
 
 ### Herring larvae stations by season
 
@@ -800,6 +814,8 @@ for(d.name in moddirs[str_detect(moddirs, "herring")]){
 
 
 ## Model validation
+
+We compared a preliminary annual scale VAST *Calanus finmarchicus* model output (no covariates or bias correction) with the annual anomalies currently included in the R `ecodata` package. Estimation methods are completely different and spatial strata are slightly different, but the timing of high and low anomalies is well-aligned between the two methods for the region mainly occupied by both Atlantic herring and *Calanus finmarchicus*, Georges Bank (GB) and the Gulf of Maine (GOM). 
 
 ```{r}
 
@@ -839,7 +855,7 @@ stratlook2 <- data.frame(Stratum = c("Stratum_1",
 
 source(here::here("R/utils_VASToutput.R")) #IEA/HerringRT_2025/
 
-outdir <- here::here("pyindex") #IEA/HerringRT_2025/
+outdir <- here::here("pyindex_tests") #IEA/HerringRT_2025/
 moddirs <- list.dirs(outdir) 
 moddirs <- moddirs[-1]
 # keep folder name
@@ -1097,11 +1113,20 @@ flextable::flextable(modselect |>
   flextable::set_table_properties(layout = "autofit", width = 1)
 ```
 
-Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for calfin, lgcopeALL, smallcopeALL, and smallcopeSOE. 
+Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring datasets and the fall datasets for calfin, lgcopeALL, smallcopeALL, and smallcopeSOE. 
+
+However, the small copepod fall model had the spatial random effects parameter for encounter rate,  $\omega_1$, approach 0. We allowed it to be estimated at 0 rather than fixing it at 0. Resulting indices were identical.
 
 Full outputs from stage 1 model selection are posted to google drive [here](https://drive.google.com/drive/folders/1szQzBbn-bQosPK4AqKRbfbduGGMM-BDG?usp=drive_link). 
 
+## Model selection stage 2 results
+
 Including the day of year covariate had mixed success. While some models fit better with this covariate, others did not meet the convergence criteria. Therefore, we moved forward with the best fitting model that converged to generate indices.
+
+Full results from the best fitting models are posted to google drive [here](https://drive.google.com/drive/folders/1ckEX3FEzxFFE0y49l7uRYciX0HFv-Utq?usp=sharing)
+
+Only spring large zooplankton did better with a day of year catchability covariate among the models related to herring recruitment. 
+
 
 ```{r}
 # from each output folder in pyindex, 
@@ -1149,10 +1174,171 @@ flextable::flextable(modselect) %>%
 
 ```
 
+## Indices by zooplankton group
 
+Although models were run in multiple seasons and at multiple spatial scales, we focus on results from three indices that were evaluated as covariates in the Atlantic herring assessment model. Based on the results of the boosted regression tree analysis (Molina 2024), the first two indices are large copepods in spring (influencing growth of herring postlarvae and juveniles), and small copeopods in fall (influencing survival of herring larvae over the winter). The spatial scale of these indices is the Atlantic herring bottom trawl survey strata in spring and fall, respectively. The third index is more refined to focus on herring larvae, using temporal and spatial bounds definerd by herring larvae observations in the zooplankton dataset. This third index focuses on small copepods from September-February in the area where more than 70% of herring larval density was identified between 1982-2022.
+
+```{r bestmods}
+# lets only look at indices for converged models
+
+stratlook <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
+
+stratlook2 <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7",
+                                    "Stratum_8",
+                                    "Stratum_9"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "her_larv",
+                                    "no_larv",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
+
+
+modcompare_conv <- modselect |>
+  dplyr::ungroup() |>
+  dplyr::filter(converged2 == "likely") |>
+  dplyr::select(modname) |>
+  as.vector() |>
+  unname() |>
+  unlist()
+
+# or only converged and best AIC
+modcompare_best <- modselect |>
+  dplyr::ungroup() |>
+  dplyr::filter(converged2 == "likely") |>
+  dplyr::distinct(copegroup, season, .keep_all = T) |> # assumes orderd by dAIC!
+  dplyr::select(modname) |>
+  as.vector() |>
+  unname() |>
+  unlist()
+
+moddirs_conv <-  moddirs[grepl(sprintf("\\.*(%s)$", paste(modcompare_conv, collapse = '|')), moddirs)]
+
+moddirs_best <-  moddirs[grepl(sprintf("\\.*(%s)$", paste(modcompare_best, collapse = '|')), moddirs)]
+
+modcompareindex <- purrr::map_dfr(moddirs_best, purrr::possibly(getmodindex, otherwise = NULL))
+
+splitoutput <- modcompareindex %>%
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook)
+
+# only larvarea models have this strata set
+splitoutput2 <- modcompareindex %>%
+  dplyr::filter(str_detect(modname, "larvarea")) |>
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook2)
+
+zoomax <- max(splitoutput$Estimate, na.rm=T)
+
+zootsmean <- splitoutput %>%
+  dplyr::group_by(modname, Region) %>%
+  dplyr::mutate(fmean = mean(Estimate, na.rm=T)) 
+```
+
+
+### Spring (January-June) large copepods
+
+Spring indices for large copepods in the herring spring survey strata (her_sp), on Georges Bank (GB), and in the Gulf of Maine (GOM).
+
+```{r lgcopespring, fig.asp=1}
+
+plot_zooindices(splitoutput = splitoutput |> dplyr::filter(Season == "spring"), 
+             plotdata = "lgcopeALL", 
+             plotregions = c("her_sp", "GB", "GOM"), #"AllEPU", "SS"
+             plottitle = "Large copeopods") 
+```
+
+VAST-estimated density of large copepods
+
+```{r lgcopesprdens}
+knitr::include_graphics(here::here("pyindex/lgcopeALL_spring_500_biascorrect_doy/ln_density-predicted.png"))
+```
+
+
+### Fall (July-December) small copepods
+
+Spring indices for small copepods in the herring fall survey strata (her_fa), on Georges Bank (GB), and in the Gulf of Maine (GOM).
+
+```{r smcopefall, fig.asp=1}
+
+plot_zooindices(splitoutput = splitoutput |> dplyr::filter(Season == "fall"), 
+             plotdata = "smallcopeALL", 
+             plotregions = c("her_fa", "GB", "GOM"), #"AllEPU", "SS"
+             plottitle = "small copeopods") 
+```
+
+VAST-estimated density of small copepods
+
+```{r smcopefalldens}
+knitr::include_graphics(here::here("pyindex/smallcopeALL_fall_500_biascorrect/ln_density-predicted.png"))
+```
+
+
+### September-February small copepods in herring larval area
+
+Small copepods available to larvae
+
+```{r smcopelarvsepfeb, fig.asp=.67}
+
+plot_zooindices(splitoutput = splitoutput2, 
+             plotdata = "smallcopeALL", 
+             plotregions = c("her_larv", "her_fa"), 
+             plottitle = "Small copepods Sept-Feb") +
+  ggplot2::theme(legend.position="none")
+```
+
+Comparison with small copepods outside the larval area 
+
+```{r, fig.asp=.4}
+
+plot_zooindices_onepanel(splitoutput = splitoutput2 |> dplyr::filter(Region %in% c("her_larv", "no_larv")), 
+             plotdata = "smallcopeALL", 
+             plottitle = "Small copepods Sept-Feb") +
+  ggplot2::ggtitle(NULL)
+```
+
+VAST-estimated density of small copepods September-February
+
+```{r smcopelarvfalldens}
+knitr::include_graphics(here::here("pyindex/smallcopeALL_sepfeb_yrshift_500_larvarea_biascorrect/ln_density-predicted.png"))
+```
 
 
 # Discussion
+
+The indices suggest that spring large copepods incereased to a relatively high level in 2015 but have been declining since, although there is no long term trend in the time series.
+
+Fall small copepods have generally increased from a low in the mid-2000s and have remained relatively stable 2010-present, and similarly have no long term trend in the time series.
+
+September-February small copepods have very similar trajectories in the Atlantic herring bottom trawl survey strata and in the herring larval area defined using larval data. The trend for the bottom trawl survey strata shows a significant long term increase, while that in the herring larval area does not. Both time series have increased from a low in the mid-2000s.
+
+There is some evidence that the proportion of small copepods outside the herring larval area was higher than within the larval area up until the mid-2010s. Since then, the estimated abundance of small copepods is similar inside and outside the herring larval area.
 
 # References
 
