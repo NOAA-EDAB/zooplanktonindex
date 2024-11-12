@@ -412,7 +412,16 @@ Converged models with the lowest AIC for each taxonomic/season combination were 
 
 ## Model diagnostics
 
-After selecting the converged model structures with the most support based on AIC, standard diagnostics were evaluated for each model: data available by season, year, and in space, quantile residuals in aggregate and in space, and 
+After selecting the converged model structures with the most support based on AIC, standard diagnostics were evaluated for each model: data available by season, year, and in space, quantile residuals in aggregate and in space. Model results include the ln density each year and the resulting indices for each spatial unit.
+
+## Defining herring larval presence in time and space
+
+When developing a zooplankton index, it is important to determine whether the zooplankton are available to herring larvae in time and space. We used data available on herring larvae in the zooplankton dataset to define the most likely time and space for herring larvae, and used those definitions to further refine selected zooplankton indices.
+
+A herring larvae VAST model was developed using the same methods as above, and resulting indices were compared with those estimated by @richardson_development_2010. 
+
+Models were initially developed using the same seasons as for zooplankton (Spring = January-June, Fall = July-December). However, nearly all observations of herring larvae in the 1982-2022 dataset were from September - February (also reflected in the index developed in @richardson_development_2010.) Therefore, another model for September-February was developed, which aligned observations in January-February with those from the preceeding fall September-December. 
+
 
 # Results
 
@@ -494,6 +503,28 @@ flextable::flextable(samptab) |>
   flextable::width(width = 1)
 
 ```
+
+### Zooplankton stations by season
+
+
+
+### Herring larvae stations by season
+
+Fall sampling for herring larvae was completed in most years aside from GLOBEC. In our definition of spring, herring larvae primarily occur in January and February. We now include a shifted season to better match larval herring availability throughout the time series: September - February. Year corresponds to September-December, and the following January and February are aligned with the previous year (hatch year) in these analyses. 
+
+```{r, results = "asis"}
+for(d.name in moddirs[str_detect(moddirs, "herring")]){
+  
+  modpath <- unlist(str_split(d.name, pattern = "/"))
+  modname <- modpath[length(modpath)]
+  
+  cat(modname, "\n")
+  cat(paste0("![](",d.name, "/Data_by_year.png)"))
+  cat("\n\n")
+  
+}
+```
+
 
 ## Model validation
 
@@ -796,6 +827,56 @@ flextable::flextable(modselect |>
 Using REML, models including spatial and spatio-temporal random effects as well as anisotropy were best supported by the data. This was true for the spring dataset and the fall dataset for calfin, lgcopeALL, smallcopeALL, and smallcopeSOE. 
 
 Full outputs from stage 1 model selection are posted to google drive [here](https://drive.google.com/drive/folders/1szQzBbn-bQosPK4AqKRbfbduGGMM-BDG?usp=drive_link). 
+
+Including the day of year covariate had mixed success. While some models fit better with this covariate, others did not meet the convergence criteria. Therefore, we moved forward with the best fitting model that converged to generate indices.
+
+```{r}
+# from each output folder in pyindex, 
+outdir <- here::here("pyindex")
+moddirs <- list.dirs(outdir) 
+moddirs <- moddirs[-1]
+# keep folder name
+modnames <- list.dirs(outdir, full.names = FALSE)
+
+modcompare <- purrr::map_dfr(moddirs, getmodinfo)
+
+modselect <- modcompare |>
+  dplyr::mutate(season = dplyr::case_when(stringr::str_detect(modname, "_fall_") ~ "Fall",
+                            stringr::str_detect(modname, "spring") ~ "Spring",
+                            stringr::str_detect(modname, "_all_") ~ "Annual",
+                            TRUE ~ as.character(NA))) |>
+  dplyr::mutate(converged2 = dplyr::case_when(stringr::str_detect(converged, "no evidence") ~ "likely",
+                                stringr::str_detect(converged, "is likely not") ~ "unlikely",
+                                TRUE ~ as.character(NA))) |>
+  dplyr::mutate(copegroup = stringr::str_extract(modname, "[^_]+")) |>
+  #dplyr::mutate(modname = str_extract(modname, '(?<=allagg_).*')) |>
+  dplyr::group_by(copegroup, season) |>
+  dplyr::mutate(deltaAIC = AIC-min(AIC)) |>
+  dplyr::select(copegroup, modname, season, deltaAIC, fixedcoeff,
+         randomcoeff, use_anisotropy, 
+         omega1, omega2, epsilon1, epsilon2, 
+         beta1, beta2, AIC, converged2) |>
+  dplyr::arrange(copegroup, season, AIC)
+
+lextable::flextable(modselect) %>%
+                       #dplyr::select(-c(use_anisotropy, 
+         #omega1, omega2, epsilon1, epsilon2, 
+         #beta1, beta2))
+         #) %>%
+  flextable::set_header_labels(modname = "Model name",
+                               season = "Season",
+                               #deltaAIC = "dAIC",
+                               fixedcoeff = "N fixed",
+                               randomcoeff = "N random",
+                               converged2 = "Convergence") |>
+  #flextable::set_caption("Comparison of delta AIC (dAIC) values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures, with number of fixed (N fixed) and random (N random) coefficients. See text for model descriptions associated with each model name.") %>%
+  flextable::fontsize(size = 9, part = "all") %>%
+  flextable::colformat_double(digits = 2) |>
+  flextable::set_table_properties(layout = "autofit", width = 1)
+
+```
+
+
 
 
 # Discussion
