@@ -3,8 +3,16 @@ title: 'Working Paper: Developing zooplankton indices in VAST'
 author: "Sarah Gaichas"
 date: "`r Sys.Date()`"
 output:
-  html_document:
+  bookdown::html_document2: 
+    toc: true
+    toc_float: true
     code_fold: hide
+  bookdown::pdf_document2:
+    includes: 
+       in_header: latex/header1.tex
+    keep_tex: true
+  bookdown::word_document2:
+    toc: true
 link-citations: yes
 csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
 bibliography: zoopindex.bib
@@ -382,18 +390,9 @@ $$I_t = \sum_{s=1}^{500} a_s\hat{b}_{s,t}$$
 
 For final models, bias correction was done as in @thorson_implementing_2016.
 
-## Model validation
+## Structural decisions
 
-Zooplankton indices have not previously been developed using spatio-temporal modeling in the Northeast US. Therefore, we compare previously estimated annual abundance anomalies for *Calanus finmarchicus* with annual anomalies estimated from our VAST models. These anomalies are estimated at the ecoregion (Mid Atlantic Bight--MAB, Georges Bank--GB, and Gulf of Maine--GOM) scale. 
-
-## Model selection
-
-Model selection was done in two stages, the first looking at spatial, spatio-temporal random effects and the second looking at covariates.  The model selection script is available at 
-https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/VASTscripts/VASTunivariate_zoopindex_modselection.R
-
-Models were run using REML and without bias correction for model selection. 
-
-Two different observation models were applied. The default VAST index standardization (`purpose = "index2"` in `make_settings`) uses a Gamma distribution for positive catches and an alternative "Poisson-link delta-model" using log-link for numbers-density and log-link for biomass per number (`ObsModel= c(2,1)`).
+Two different observation models were applied, depending on the dataset. The default VAST index standardization (`purpose = "index2"` in `make_settings`) uses a Gamma distribution for positive catches and an alternative "Poisson-link delta-model" using log-link for numbers-density and log-link for biomass per number (`ObsModel= c(2,1)`).
 
 We applied the default observation model to *Calanus finmarchicus* (calfin_100m3) and Large copepods (calfin_100m3 + mlucens_100m3 + calminor_100m3 + euc_100m3 + calspp_100m3) datasets.
 
@@ -406,6 +405,18 @@ We intend for our indices to potentially be used in assessment (though as a cova
 All of the small copepods datasets had at least one year where our small copepods groupings were encountered at all stations. None had years with 0 encounters. 
 
 Therefore, we used a different link function, the Poisson-link fixing encounter probability=1 for any year where all samples encounter the species. We kept all other settings for index standardization the same, but set (`ObsModel= c(2,4)`).
+
+
+## Model validation
+
+Zooplankton indices have not previously been developed using spatio-temporal modeling in the Northeast US. Therefore, we compare previously estimated annual abundance anomalies for *Calanus finmarchicus* with annual anomalies estimated from our VAST models. These anomalies are estimated at the ecoregion (Mid Atlantic Bight--MAB, Georges Bank--GB, and Gulf of Maine--GOM) scale. 
+
+## Model selection
+
+Model selection was done in two stages, the first looking at spatial, spatio-temporal random effects and the second looking at covariates, following @ng_predator_2021 and @gaichas_assessing_2023.  The model selection script is available at 
+https://github.com/NOAA-EDAB/zooplanktonindex/blob/main/VASTscripts/VASTunivariate_zoopindex_modselection.R
+
+Models were run using Reduced Maximum Likelihood (REML) and without bias correction for the first stage of model selection. 
 
 The only "catchability" covariates tested were Day of Year ("doy") to compensate for the fast turnover rate of zooplankton during the season.  
 
@@ -815,7 +826,7 @@ for(d.name in moddirs[str_detect(moddirs, "herring")]){
 
 ## Model validation
 
-We compared a preliminary annual scale VAST *Calanus finmarchicus* model output (no covariates or bias correction) with the annual anomalies currently included in the R `ecodata` package. Estimation methods are completely different and spatial strata are slightly different, but the timing of high and low anomalies is well-aligned between the two methods for the region mainly occupied by both Atlantic herring and *Calanus finmarchicus*, Georges Bank (GB) and the Gulf of Maine (GOM). 
+We compared a preliminary annual scale VAST *Calanus finmarchicus* model output (no covariates or bias correction) with the annual anomalies currently included in the R `ecodata` package ([overview](https://noaa-edab.github.io/catalog/zoo_abundance_anom.html), [methods](https://noaa-edab.github.io/tech-doc/zoo_abundance_anom.html#data-analysis-11)). Estimation methods are completely different and spatial strata are slightly different, but the timing of high and low anomalies is well-aligned between the two methods for the region mainly occupied by both Atlantic herring and *Calanus finmarchicus*, Georges Bank (GB) and the Gulf of Maine (GOM). 
 
 ```{r}
 
@@ -937,10 +948,18 @@ SOEcalfin + ggplot2::ggtitle("Calanus finmarchicus annual anomaly: ecodata in da
 
 ```
 
-GB = Georges Bank, GOM = Gulf of Maine, MAB = Mid Atlantic Bight. Different calculation method, spatial definitions
+GB = Georges Bank, GOM = Gulf of Maine, MAB = Mid Atlantic Bight. 
+
+Comparison of spatial definitions: ecodata anomalies use the dark red line while VAST models use the blue shaded polygons.
+
+```{r, out.width='50%'}
+
+url <- "https://github.com/NOAA-EDAB/presentations/raw/master/docs/EDAB_images/EPU_Designations_Map.jpg"
+knitr::include_graphics(url)
+```
 
 
-## Model selecction Stage 1 results
+## Model selection Stage 1 results
 
 ```{r}
 # from each output folder in pyindex, 
@@ -1141,7 +1160,8 @@ modcompare <- purrr::map_dfr(moddirs, getmodinfo)
 modselect <- modcompare |>
   dplyr::mutate(season = dplyr::case_when(stringr::str_detect(modname, "_fall_") ~ "Fall",
                             stringr::str_detect(modname, "spring") ~ "Spring",
-                            stringr::str_detect(modname, "_all_") ~ "Annual",
+                            stringr::str_detect(modname, "_ann_") ~ "Annual",
+                            stringr::str_detect(modname, "sepfeb") ~ "SepFeb",
                             TRUE ~ as.character(NA))) |>
   dplyr::mutate(converged2 = dplyr::case_when(stringr::str_detect(converged, "no evidence") ~ "likely",
                                 stringr::str_detect(converged, "is likely not") ~ "unlikely",
@@ -1151,9 +1171,10 @@ modselect <- modcompare |>
   dplyr::group_by(copegroup, season) |>
   dplyr::mutate(deltaAIC = AIC-min(AIC)) |>
   dplyr::select(copegroup, modname, season, deltaAIC, fixedcoeff,
-         randomcoeff, use_anisotropy, 
-         omega1, omega2, epsilon1, epsilon2, 
-         beta1, beta2, AIC, converged2) |>
+         randomcoeff, 
+         omega1, omega2, #epsilon1, epsilon2, 
+         #beta1, beta2, use_anisotropy, 
+         AIC, converged2) |>
   dplyr::arrange(copegroup, season, AIC)
 
 flextable::flextable(modselect) %>%
@@ -1166,6 +1187,7 @@ flextable::flextable(modselect) %>%
                                #deltaAIC = "dAIC",
                                fixedcoeff = "N fixed",
                                randomcoeff = "N random",
+                               omega2 = "All other effects",
                                converged2 = "Convergence") |>
   #flextable::set_caption("Comparison of delta AIC (dAIC) values using Restricted Maxiumum Likelihood (REML) for alternative fixed and random effects model structures, with number of fixed (N fixed) and random (N random) coefficients. See text for model descriptions associated with each model name.") %>%
   flextable::fontsize(size = 9, part = "all") %>%
