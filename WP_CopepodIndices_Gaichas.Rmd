@@ -18,6 +18,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 library(tidyverse)
 library(FishStatsUtils)
+library(VAST)
 ```
 
 # Introduction
@@ -424,6 +425,88 @@ Models were initially developed using the same seasons as for zooplankton (Sprin
 
 To define areas with the most dense herring larvae, we calculate quantiles of density in space across the time series. First we sum the density in each cells over all years, then calculate the quantiles of summed log density from the September-February herring larvae VAST model.
 
+```{r}
+
+stratlook <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
+
+stratlook2 <- data.frame(Stratum = c("Stratum_1",
+                                    "Stratum_2",
+                                    "Stratum_3",
+                                    "Stratum_4",
+                                    "Stratum_5",
+                                    "Stratum_6",
+                                    "Stratum_7",
+                                    "Stratum_8",
+                                    "Stratum_9"),
+                        Region  = c("AllEPU",
+                                    "her_sp",
+                                    "her_fa",
+                                    "her_larv",
+                                    "no_larv",
+                                    "MAB",
+                                    "GB",
+                                    "GOM",
+                                    "SS"))
+
+source(here::here("R/utils_VASToutput.R")) #IEA/HerringRT_2025/
+
+outdir <- here::here("pyindex") #IEA/HerringRT_2025/
+moddirs <- list.dirs(outdir) 
+moddirs <- moddirs[-1]
+# keep folder name
+modnames <- list.dirs(outdir, full.names = FALSE)
+
+modselect <- modtable(moddirs)
+
+# lets only look at indices for converged models
+modcompare_conv <- modselect |>
+  dplyr::ungroup() |>
+  dplyr::filter(converged2 == "likely") |>
+  dplyr::select(modname) |>
+  as.vector() |>
+  unname() |>
+  unlist()
+
+moddirs_conv <-  moddirs[grepl(sprintf("\\.*(%s)$", paste(modcompare_conv, collapse = '|')), moddirs)]
+
+
+modcompareindex <- purrr::map_dfr(moddirs_conv, purrr::possibly(getmodindex, otherwise = NULL))
+
+splitoutput <- modcompareindex %>%
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook)
+
+# only larvarea models have this strata set
+splitoutput2 <- modcompareindex %>%
+  dplyr::filter(str_detect(modname, "larvarea")) |>
+  dplyr::mutate(Season = modname |> map(str_split, pattern = "_") |> map_chr(c(1,2))) %>%
+  dplyr::mutate(Data = modname |> map(str_split, pattern = "_") |> map_chr(c(1,1))) %>%
+  dplyr::mutate(Estimate = ifelse(Estimate == 0, NA, Estimate)) |>
+  dplyr::left_join(stratlook2)
+
+zoomax <- max(splitoutput$Estimate, na.rm=T)
+
+zootsmean <- splitoutput %>%
+  dplyr::group_by(modname, Region) %>%
+  dplyr::mutate(fmean = mean(Estimate, na.rm=T)) 
+
+```
+
 ```{r, fig.width=10}
 
 # one option, sum D_gct over all years then take quantiles in space
@@ -478,6 +561,37 @@ qvec
 Mapping the summed density below.
 
 ```{r}
+
+d.name <- moddirs[str_detect(moddirs, "herringlarvae_sepfeb")]
+fit <- readRDS(paste0(d.name, "/fit.rds"))
+#fit <- VAST::reload_model(fit) #added to try to make work after restart, no previous VAST run
+years <- unique(fit$data_frame$t_i)
+years <- c(min(years):max(years))
+
+mdl <- FishStatsUtils::make_map_info(Region = fit$settings$Region,
+                     spatial_list = fit$spatial_list,
+                     Extrapolation_List = fit$extrapolation_list#,
+                     #added to try to make work after restart, no previous VAST run
+                     #Include = fit$extrapolation_list[["Area_km2_x"]] > 0 &  rowSums(fit$extrapolation_list[["a_el"]]) >  0
+                     )
+
+gmap <- ggplot(data = ecodata::coast) +
+  geom_sf() + 
+  #aes(x = lon, y = lat, group = group) +
+  #geom_polygon(fill="black", colour = "white") +
+  scale_color_viridis_c(option = "magma") +  # now make this quantiles...
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.spacing.x=unit(0, "lines"),
+        panel.spacing.y=unit(0, "lines"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank() ) +
+  coord_sf(xlim=mdl$Xlim, ylim=mdl$Ylim)
+
 g <- gmap +
   geom_point(data=Dtot, aes(Lon, Lat, color=log(as.vector(Dsum)), group=NULL)
              ,
@@ -725,7 +839,7 @@ stratlook2 <- data.frame(Stratum = c("Stratum_1",
 
 source(here::here("R/utils_VASToutput.R")) #IEA/HerringRT_2025/
 
-outdir <- here::here("mods") #IEA/HerringRT_2025/
+outdir <- here::here("pyindex") #IEA/HerringRT_2025/
 moddirs <- list.dirs(outdir) 
 moddirs <- moddirs[-1]
 # keep folder name
@@ -1017,7 +1131,7 @@ modselect <- modcompare |>
          beta1, beta2, AIC, converged2) |>
   dplyr::arrange(copegroup, season, AIC)
 
-lextable::flextable(modselect) %>%
+flextable::flextable(modselect) %>%
                        #dplyr::select(-c(use_anisotropy, 
          #omega1, omega2, epsilon1, epsilon2, 
          #beta1, beta2))
