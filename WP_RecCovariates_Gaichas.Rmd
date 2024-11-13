@@ -1,0 +1,89 @@
+---
+title: "Working Paper: Recruitment covariate testing in WHAM"
+author: "Sarah Gaichas and Jon Deroba"
+date: "`r Sys.Date()`"
+output:
+  bookdown::html_document2: 
+    toc: true
+    toc_float: true
+    code_fold: hide
+  bookdown::pdf_document2:
+    includes: 
+       in_header: latex/header1.tex
+    keep_tex: true
+  bookdown::word_document2:
+    toc: true
+link-citations: yes
+csl: "canadian-journal-of-fisheries-and-aquatic-sciences.csl"
+bibliography: zoopindex.bib
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(tidyverse)
+library(here)
+library(DT)
+library(patchwork)
+library(wham)
+
+```
+
+# Introduction
+
+The Atlantic herring research track assessment working group (WG) prioritized investigation of recruitment drivers as potential stock assessment model covariates, because low recruitment in recent years is an important issue for the stock and for fishery management.
+
+The WG used a boosted regression tree analysis (Molina 2024) to identify zooplankton indices that best explained patterns in herring recruitment.  These indices included large copepods in spring (influencing growth of herring postlarvae and juveniles), small copeopods in fall (influencing survival of herring larvae over the winter), haddock egg predation (influencing egg mortality), and temperature (influencing larval and juvenile survival).
+
+In this working paper, we evaluate each of these indices as potential recruitment covariates in the Atlantic herring assessment implemented during the research track in the Woods Hole Assessment Model (WHAM, @stock_woods_2021). 
+
+
+# Methods
+
+We are using the `devel` version of WHAM: https://github.com/timjmiller/wham/tree/devel
+
+Model [mm192](https://drive.google.com/drive/folders/1sQdDsfdnVbiiY4X7Rgr-fvegwT7Fa1Az?usp=drive_link) is our starting point.
+
+Haddock egg predation, Zooplankton, and temperature indices were explored as covariates on herring recruitment.
+
+Recruitment is modeled as deviations from the "recruitment scaling parameter", leaving one option for modeling effects of covariates on recruitment: "controlling".
+
+A "controlling" recruitment covariate results in a time-varying recruitment scaling parameter.
+
+[Jon's text on the haddock egg predation testing here... including trying to fit a stock recruitment function that didnt work]
+
+We explored indices with different zooplankton groups, seasons, and regions according to herring life history and results from the boosted regression tree:
+
+*  Jan-Jun (Spring) large copepods in spring herring BTS strata with lag-0 to represent food for pre-recruit juveniles
+*  Jul-Dec (Fall) small copepods in fall herring BTS strata with lag-1 to represent food for larvae in general
+*  Sep-Feb small copepods in herring larval area with lag-1 to represent food for larvae more specifically
+*  Combinations of large and small copepod covariates above 
+
+We evaluated 
+
+*  Options for covariate input (millions of cells vs. log(cells), VAST estimated SE vs. WHAM estimated SE)  
+*  Options for covariate observation model ("rw" vs. "ar1")  
+*  Options for recruitment link ("none" vs. "controlling-linear" with lag-0 for large copepods and lag-1 for small)  
+
+Short story:
+
+*  Models with covariates input on the log scale generally converged
+*  Models with WHAM estimated covariate SE ("est_1") generally converged
+*  Under the above conditions, most models with and without the recruitment link converged for all covariates
+
+*  Models with the Jan-Jun (Spring) large copepods covariate also converged with input as millions of cells and VAST estimated SE
+
+*  I'm still figuring out where to find all the diagnostics in WHAM, so "converged" may not be "a good model"
+
+[Way too much detail including false starts](https://noaa-edab.github.io/zooplanktonindex/WHAMcovariate_tests.html)
+
+
+# Results
+
+# Discussion
+
+# References
+
