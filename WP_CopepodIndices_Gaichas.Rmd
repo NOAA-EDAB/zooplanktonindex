@@ -1351,6 +1351,28 @@ VAST-estimated density of small copepods September-February
 knitr::include_graphics(here::here("pyindex/smallcopeALL_sepfeb_yrshift_500_larvarea_biascorrect/ln_density-predicted.png"))
 ```
 
+### Summary figure for ToR 1
+
+Indices sent to the WHAM model
+
+```{r summfig1, fig.asp=1}
+
+lg <- plot_zooindices(splitoutput = splitoutput |> dplyr::filter(Season == "spring"), 
+             plotdata = "lgcopeALL", 
+             plotregions = c("her_sp"), #"AllEPU", "SS"
+             plottitle = "Spring Large copeopods") 
+
+sm <- plot_zooindices(splitoutput = splitoutput |> dplyr::filter(Season == "fall"), 
+             plotdata = "smallcopeALL", 
+             plotregions = c("her_fa"), #"AllEPU", "SS"
+             plottitle = "Fall Small copeopods") 
+
+lg/sm
+
+```
+
+
+
 
 # Discussion
 
