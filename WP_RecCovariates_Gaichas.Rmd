@@ -40,6 +40,8 @@ The WG used a boosted regression tree analysis (Molina 2024) to identify zooplan
 
 In this working paper, we evaluate each of these indices as potential recruitment covariates in the Atlantic herring assessment implemented during the research track in the Woods Hole Assessment Model (WHAM, @stock_woods_2021). 
 
+As a sensitivity test, we also evaluate the effects of potential recruitment covariates with NAA random effects turned off in the Atlantic herring assessment model. 
+
 
 # Methods
 
