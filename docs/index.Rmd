@@ -35,4 +35,6 @@ output: html_document
 
 <a href="https://noaa-edab.github.io/zooplanktonindex/WP_RecCovariates_Gaichas.html" target="_blank"> Draft zoop and temp covariates WP - Nov 2024 </a>
 
+<a href="https://noaa-edab.github.io/zooplanktonindex/ZoopSOEworkflow.html" target="_blank"> Clarifying how the SOE indices were produced - Sept 2025 </a>
+
 
