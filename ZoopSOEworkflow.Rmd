@@ -90,6 +90,8 @@ The copepod script was most recently run with the day of year covariate, and lac
 
 Another time saving shortcut would be to run the nodels only for the SOE regions and comment out the regions for herring spring and fall survey areas in the `strata.limits = ` portion of the code. 
 
+*If strata limits are changed in the VAST script, you also need to change them similarly in the `SOEinputs` function defined at the end of the page https://noaa-edab.github.io/zooplanktonindex/ZoopCOG.html*
+
 All the scripts are writing model output to a pyindex folder with subfolders for each model run. This structure is important to maintain if you want to use the scripts below that make the SOE input datasets.
 
 ## Make the SOE datasets
